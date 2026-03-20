@@ -141,8 +141,8 @@ jobs:
           MAIL_TO:       ${{ secrets.MAIL_TO }}
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: smtp.gmail.com
-          server_port: 587
+          server_address: smtp.163.com
+          server_port: 465
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "📊 ETF 操作提醒"
