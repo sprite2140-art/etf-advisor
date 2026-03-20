@@ -28,10 +28,11 @@ jobs:
           import urllib.request, json, re
           from datetime import datetime, timezone, timedelta
 
-          # 持仓 + 观察列表，全部抓取
-          HOLDING_CODES  = ['sz159869', 'sz161125', 'sz159583']
+          # 持仓 + 观察列表 + 大盘指数，全部抓取
+          HOLDING_CODES   = ['sz159869', 'sz161125', 'sz159583']
           WATCHLIST_CODES = ['sh510300', 'sh588000', 'sh513100']
-          ALL_CODES = HOLDING_CODES + WATCHLIST_CODES
+          INDEX_CODES     = ['sh000001', 'sz399001', 'sz399006']  # 上证/深成/创业板
+          ALL_CODES = HOLDING_CODES + WATCHLIST_CODES + INDEX_CODES
 
           url = 'https://hq.sinajs.cn/list=' + ','.join(ALL_CODES)
           req = urllib.request.Request(url, headers={
