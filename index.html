@@ -108,21 +108,62 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 18px;
-      transition: border-color 0.2s;
+      overflow: hidden;
     }
-    .etf-card:active { border-color: var(--blue); }
 
-    .card-top {
+    /* 顶部操作建议条 */
+    .card-signal-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+    }
+    .signal-action {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .signal-reason {
+      font-size: 12px;
+      opacity: 0.85;
+      text-align: right;
+      max-width: 55%;
+      line-height: 1.4;
+    }
+    .bar-sell       { background: rgba(248,81,73,0.18);  color: var(--red);    }
+    .bar-sell-light { background: rgba(255,166,87,0.18); color: var(--yellow); }
+    .bar-hold       { background: rgba(63,185,80,0.18);  color: var(--green);  }
+    .bar-watch      { background: rgba(88,166,255,0.18); color: var(--blue);   }
+    .bar-buy        { background: rgba(163,230,53,0.18); color: var(--lime);   }
+
+    /* 卡片主体 */
+    .card-body { padding: 14px 16px 16px; }
+    .card-name-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 14px;
+      align-items: baseline;
+      margin-bottom: 10px;
     }
-    .etf-name { font-size: 17px; font-weight: 700; }
-    .etf-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .etf-name { font-size: 16px; font-weight: 700; }
+    .etf-meta { font-size: 11px; color: var(--muted); }
 
-    /* 信号徽章 */
+    /* 价格行 */
+    .price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+    .price-main { font-size: 28px; font-weight: 800; }
+    .price-today { font-size: 13px; font-weight: 600; }
+
+    /* 数据网格 */
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .grid-label { font-size: 10px; color: var(--muted); }
+    .grid-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+    /* 信号徽章（保留用于summary） */
     .badge {
       padding: 5px 11px;
       border-radius: 20px;
@@ -136,34 +177,6 @@
     .badge-hold       { background: rgba(63,185,80,0.15);  color: var(--green);  }
     .badge-watch      { background: rgba(88,166,255,0.15); color: var(--blue);   }
     .badge-buy        { background: rgba(163,230,53,0.15); color: var(--lime);   }
-
-    /* 价格区域 */
-    .price-row { display: flex; align-items: baseline; gap: 8px; }
-    .price-main { font-size: 26px; font-weight: 800; }
-    .price-today { font-size: 13px; font-weight: 600; }
-
-    /* 四格数据 */
-    .card-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 12px;
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border);
-    }
-    .grid-label { font-size: 11px; color: var(--muted); }
-    .grid-value { font-size: 14px; font-weight: 600; margin-top: 2px; }
-
-    /* 建议文字 */
-    .card-advice {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.03);
-      border-radius: 8px;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
 
     /* ─── 颜色工具 ─── */
     .pos { color: var(--green); }
@@ -267,21 +280,21 @@ const HOLDINGS = [
   {
     code: 'sz159869',
     name: '游戏ETF',
-    shares: 42300,
-    costPrice: 1.155,
-    type: 'thematic',          // thematic = 主题型（弹性大，更积极止盈）
+    shares: 55000,
+    costPrice: 1.198,
+    type: 'thematic',
     desc: '游戏行业 · 弹性大波动大',
-    stopProfitAt: 0.15,        // 浮盈达到 15% → 开始考虑止盈
-    addPositionAt: -0.05,      // 跌超 5% → 可以考虑加仓
+    stopProfitAt: 0.15,
+    addPositionAt: -0.05,
   },
   {
     code: 'sz161125',
     name: '标普500LOF',
     shares: 33100,
     costPrice: 2.795,
-    type: 'config',            // config = 配置型（稳定，更有耐心）
+    type: 'config',
     desc: '美国大市场 · 相对稳定',
-    stopProfitAt: 0.20,        // 配置型更有耐心，20% 才考虑止盈
+    stopProfitAt: 0.20,
     addPositionAt: -0.08,
   },
   {
@@ -289,7 +302,7 @@ const HOLDINGS = [
     name: '通信设备ETF',
     shares: 90600,
     costPrice: 1.267,
-    type: 'aggressive',        // aggressive = 进攻型（中国科技方向）
+    type: 'aggressive',
     desc: '中国科技制造 · 进攻型',
     stopProfitAt: 0.15,
     addPositionAt: -0.05,
@@ -307,6 +320,7 @@ function getSignal(pnlPct, etf) {
     return {
       label: '分批止盈',
       css: 'badge-sell',
+      shortReason: `涨了 ${pct(p)}，先卖出 15-20%`,
       advice: `浮盈已达 ${pct(p)}，涨幅较大。建议先卖出 15-20% 锁定利润，剩余继续拿着。`,
     };
   }
@@ -314,6 +328,7 @@ function getSignal(pnlPct, etf) {
     return {
       label: '小额止盈',
       css: 'badge-sell-light',
+      shortReason: `浮盈 ${pct(p)}，可先卖 5-10%`,
       advice: `浮盈接近 ${pct(etf.stopProfitAt)}，可以考虑先卖出 5-10% 的仓位，其余继续持有。`,
     };
   }
@@ -321,6 +336,7 @@ function getSignal(pnlPct, etf) {
     return {
       label: '继续持有',
       css: 'badge-hold',
+      shortReason: `浮盈 ${pct(p)}，不用动`,
       advice: `浮盈 ${pct(p)}，状态正常。继续持有，不用动。`,
     };
   }
@@ -328,12 +344,14 @@ function getSignal(pnlPct, etf) {
     return {
       label: '观察',
       css: 'badge-watch',
+      shortReason: '接近成本价，先等等',
       advice: `接近成本价（${pct(p)}），方向不明确。先观察，不确定就先不动。`,
     };
   }
   return {
     label: '可小额加仓',
     css: 'badge-buy',
+    shortReason: `跌破成本 ${pct(Math.abs(p))}，可小额补仓`,
     advice: `跌至成本价以下 ${pct(Math.abs(p))}，如果你对这个方向还有信心，可以小额加仓（不超过原仓位的 20%）。`,
   };
 }
@@ -399,45 +417,53 @@ function render(prices) {
 
     const sig = getSignal(pnlPct, etf);
 
+    // 今日盈亏金额
+    const todayPnl = etf.shares * (cur - prev);
+
     cards.push(`
       <div class="etf-card">
-        <div class="card-top">
-          <div>
-            <div class="etf-name">${etf.name}</div>
-            <div class="etf-meta">${etf.code.toUpperCase()} · ${etf.desc}</div>
-          </div>
-          <div class="badge ${sig.css}">${sig.label}</div>
+
+        <!-- 顶部：操作建议（最显眼） -->
+        <div class="card-signal-bar bar-${sig.css.replace('badge-','')}">
+          <div class="signal-action">${sig.label}</div>
+          <div class="signal-reason">${sig.shortReason}</div>
         </div>
 
-        <div class="price-row">
-          <span class="price-main ${color(pnlPct)}">¥${cur.toFixed(3)}</span>
-          <span class="price-today ${color(todayChg)}">
-            ${todayChg >= 0 ? '▲' : '▼'} ${pct(Math.abs(todayChg))} 今日
-          </span>
-        </div>
-
-        <div class="card-grid">
-          <div>
-            <div class="grid-label">我的成本价</div>
-            <div class="grid-value">¥${etf.costPrice.toFixed(3)}</div>
+        <div class="card-body">
+          <!-- ETF 名称 -->
+          <div class="card-name-row">
+            <span class="etf-name">${etf.name}</span>
+            <span class="etf-meta">${etf.desc}</span>
           </div>
-          <div>
-            <div class="grid-label">浮盈 / 浮亏</div>
-            <div class="grid-value ${color(pnlPct)}">
-              ${money(pnl)} &nbsp;(${sign(pnlPct)}${pct(Math.abs(pnlPct))})
+
+          <!-- 现价 + 今日涨跌 -->
+          <div class="price-row">
+            <span class="price-main"">¥${cur.toFixed(3)}</span>
+            <span class="price-today ${color(todayChg)}">
+              ${todayChg >= 0 ? '▲' : '▼'} ${pct(Math.abs(todayChg))} 今日
+            </span>
+            <span class="price-today ${color(todayPnl)}" style="margin-left:4px">
+              ${money(todayPnl)}
+            </span>
+          </div>
+
+          <!-- 三格数据 -->
+          <div class="card-grid">
+            <div>
+              <div class="grid-label">持有市值</div>
+              <div class="grid-value">¥${Math.round(value).toLocaleString()}</div>
+            </div>
+            <div>
+              <div class="grid-label">总浮盈</div>
+              <div class="grid-value ${color(pnlPct)}">${sign(pnlPct)}${pct(Math.abs(pnlPct))}</div>
+            </div>
+            <div>
+              <div class="grid-label">成本 → 现价</div>
+              <div class="grid-value">¥${etf.costPrice.toFixed(3)} → ${cur.toFixed(3)}</div>
             </div>
           </div>
-          <div>
-            <div class="grid-label">持有份数</div>
-            <div class="grid-value">${etf.shares.toLocaleString()} 份</div>
-          </div>
-          <div>
-            <div class="grid-label">当前市值</div>
-            <div class="grid-value">¥${Math.round(value).toLocaleString()}</div>
-          </div>
         </div>
 
-        <div class="card-advice">💡 ${sig.advice}</div>
       </div>
     `);
   });
