@@ -17,6 +17,8 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: 签出代码
         uses: actions/checkout@v4
