@@ -3,15 +3,15 @@
   "data": {
     "sz159869": {
       "name": "游戏ETF",
-      "current": 1.32,
+      "current": 1.304,
       "prevClose": 1.344,
       "open": 1.342,
       "high": 1.354,
-      "low": 1.317
+      "low": 1.303
     },
     "sz161125": {
       "name": "标普500",
-      "current": 2.829,
+      "current": 2.827,
       "prevClose": 2.833,
       "open": 2.83,
       "high": 2.841,
@@ -19,12 +19,36 @@
     },
     "sz159583": {
       "name": "通信设备",
-      "current": 1.386,
+      "current": 1.369,
       "prevClose": 1.357,
       "open": 1.386,
       "high": 1.414,
-      "low": 1.376
+      "low": 1.369
+    },
+    "sh510300": {
+      "name": "沪深300ETF华泰柏瑞",
+      "current": 4.576,
+      "prevClose": 4.599,
+      "open": 4.598,
+      "high": 4.635,
+      "low": 4.573
+    },
+    "sh588000": {
+      "name": "科创50ETF",
+      "current": 1.388,
+      "prevClose": 1.411,
+      "open": 1.414,
+      "high": 1.419,
+      "low": 1.387
+    },
+    "sh513100": {
+      "name": "纳指ETF国泰",
+      "current": 1.749,
+      "prevClose": 1.764,
+      "open": 1.771,
+      "high": 1.771,
+      "low": 1.748
     }
   },
-  "updatedAt": "2026-03-20 13:51:38"
+  "updatedAt": "2026-03-20 16:12:36"
 }
