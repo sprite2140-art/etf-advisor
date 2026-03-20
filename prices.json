@@ -1,9 +1,30 @@
 {
   "success": true,
   "data": {
-    "sz159869": { "name": "游戏ETF",    "current": 1.344, "prevClose": 1.325, "open": 1.320, "high": 1.358, "low": 1.320 },
-    "sz161125": { "name": "标普500LOF", "current": 2.833, "prevClose": 2.810, "open": 2.810, "high": 2.840, "low": 2.805 },
-    "sz159583": { "name": "通信设备ETF","current": 1.357, "prevClose": 1.340, "open": 1.340, "high": 1.365, "low": 1.338 }
+    "sz159869": {
+      "name": "游戏ETF",
+      "current": 1.32,
+      "prevClose": 1.344,
+      "open": 1.342,
+      "high": 1.354,
+      "low": 1.317
+    },
+    "sz161125": {
+      "name": "标普500",
+      "current": 2.829,
+      "prevClose": 2.833,
+      "open": 2.83,
+      "high": 2.841,
+      "low": 2.824
+    },
+    "sz159583": {
+      "name": "通信设备",
+      "current": 1.386,
+      "prevClose": 1.357,
+      "open": 1.386,
+      "high": 1.414,
+      "low": 1.376
+    }
   },
-  "updatedAt": "初始数据，等待自动更新"
+  "updatedAt": "2026-03-20 13:51:38"
 }
