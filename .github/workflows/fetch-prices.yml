@@ -2,95 +2,158 @@ name: 抓取实时ETF价格
 
 on:
   schedule:
-    # A股交易时间：周一到周五 9:25-15:05（北京时间 = UTC+8）
-    # UTC时间：01:25-07:05，每5分钟抓一次
-    - cron: '25-59/5 1 * * 1-5'   # 9:25-9:59
-    - cron: '0-59/5 2 * * 1-5'    # 10:00-10:59
-    - cron: '0-59/5 3 * * 1-5'    # 11:00-11:59
-    - cron: '0-30/5 4 * * 1-5'    # 12:00-12:30（午休，少抓）
-    - cron: '55-59/5 4 * * 1-5'   # 12:55-12:59（午市准备）
-    - cron: '0-59/5 5 * * 1-5'    # 13:00-13:59
-    - cron: '0-59/5 6 * * 1-5'    # 14:00-14:59
-    - cron: '0-5/5 7 * * 1-5'     # 15:00-15:05（收盘）
-  workflow_dispatch:               # 允许手动触发（方便测试）
+    - cron: '25-59/5 1 * * 1-5'
+    - cron: '0-59/5 2 * * 1-5'
+    - cron: '0-59/5 3 * * 1-5'
+    - cron: '55-59/4 * * 1-5'
+    - cron: '0-59/5 5 * * 1-5'
+    - cron: '0-59/5 6 * * 1-5'
+    - cron: '0-5/5 7 * * 1-5'
+  workflow_dispatch:
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - name: 签出代码
-        uses: actions/checkout@v4
 
-      - name: 抓取价格并保存
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 抓取价格并更新历史
         run: |
           python3 << 'EOF'
-          import urllib.request
-          import json
-          import re
+          import urllib.request, json, re
           from datetime import datetime, timezone, timedelta
 
-          codes = ['sz159869', 'sz161125', 'sz159583']
-          url = f"https://hq.sinajs.cn/list={','.join(codes)}"
+          # 持仓 + 观察列表，全部抓取
+          HOLDING_CODES  = ['sz159869', 'sz161125', 'sz159583']
+          WATCHLIST_CODES = ['sh510300', 'sh588000', 'sh513100']
+          ALL_CODES = HOLDING_CODES + WATCHLIST_CODES
 
+          url = 'https://hq.sinajs.cn/list=' + ','.join(ALL_CODES)
           req = urllib.request.Request(url, headers={
               'Referer': 'https://finance.sina.com.cn',
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+              'User-Agent': 'Mozilla/5.0'
           })
 
           try:
-              with urllib.request.urlopen(req, timeout=10) as resp:
-                  raw = resp.read().decode('gbk', errors='replace')
+              with urllib.request.urlopen(req, timeout=10) as r:
+                  raw = r.read().decode('gbk', errors='replace')
+          except Exception as e:
+              print(f'❌ 请求失败: {e}')
+              exit(0)
 
-              prices = {}
-              for line in raw.split('\n'):
-                  m = re.search(r'hq_str_(\w+)="([^"]+)"', line)
-                  if not m or not m.group(2):
-                      continue
-                  code = m.group(1)
-                  fields = m.group(2).split(',')
-                  if len(fields) < 6:
-                      continue
-                  current = float(fields[3])
-                  prev_close = float(fields[2])
-                  if not current or not prev_close:
-                      continue
-                  prices[code] = {
-                      'name': fields[0],
-                      'current': current,
-                      'prevClose': prev_close,
-                      'open': float(fields[1]),
-                      'high': float(fields[4]),
-                      'low': float(fields[5]),
-                  }
-
-              tz = timezone(timedelta(hours=8))
-              now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-
-              result = {
-                  'success': True,
-                  'data': prices,
-                  'updatedAt': now
+          prices = {}
+          for line in raw.split('\n'):
+              m = re.search(r'hq_str_(\w+)="([^"]+)"', line)
+              if not m or not m.group(2): continue
+              code, fields = m.group(1), m.group(2).split(',')
+              if len(fields) < 6: continue
+              cur, prev = float(fields[3]), float(fields[2])
+              if not cur or not prev: continue
+              prices[code] = {
+                  'name': fields[0], 'current': cur, 'prevClose': prev,
+                  'open': float(fields[1]), 'high': float(fields[4]), 'low': float(fields[5]),
               }
 
-              with open('prices.json', 'w', encoding='utf-8') as f:
-                  json.dump(result, f, ensure_ascii=False, indent=2)
+          tz  = timezone(timedelta(hours=8))
+          now = datetime.now(tz)
+          now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
-              print(f"✅ 价格更新成功：{now}")
-              for code, p in prices.items():
-                  print(f"  {code}: ¥{p['current']}")
+          # 写入 prices.json
+          with open('prices.json', 'w', encoding='utf-8') as f:
+              json.dump({'success': True, 'data': prices, 'updatedAt': now_str}, f, ensure_ascii=False, indent=2)
 
-          except Exception as e:
-              print(f"❌ 抓取失败: {e}")
-              # 失败时不覆盖已有数据
+          # 更新历史（只记录持仓，保留最近 60 条 ≈ 5 天）
+          try:
+              with open('prices-history.json', 'r') as f:
+                  history = json.load(f)
+          except:
+              history = {}
+
+          for code in HOLDING_CODES:
+              if code not in prices: continue
+              if code not in history: history[code] = []
+              history[code].append({'time': now_str, 'price': prices[code]['current']})
+              history[code] = history[code][-60:]  # 保留最近 60 条
+
+          with open('prices-history.json', 'w', encoding='utf-8') as f:
+              json.dump(history, f, ensure_ascii=False, indent=2)
+
+          print(f'✅ {now_str}')
+          for code, p in prices.items():
+              chg = (p['current'] - p['prevClose']) / p['prevClose'] * 100
+              print(f"  {code}: ¥{p['current']}  {chg:+.2f}%")
           EOF
+
+      - name: 检查止盈/加仓提醒
+        id: check_alert
+        run: |
+          python3 << 'EOF'
+          import json, os
+
+          HOLDINGS = [
+              {'code': 'sz159869', 'name': '游戏ETF',     'shares': 55000,  'costPrice': 1.198, 'stopAt': 0.15, 'addAt': -0.05},
+              {'code': 'sz161125', 'name': '标普500LOF',  'shares': 33100,  'costPrice': 2.795, 'stopAt': 0.20, 'addAt': -0.08},
+              {'code': 'sz159583', 'name': '通信设备ETF', 'shares': 90600,  'costPrice': 1.267, 'stopAt': 0.15, 'addAt': -0.05},
+          ]
+
+          with open('prices.json') as f:
+              data = json.load(f)
+          prices = data.get('data', {})
+
+          alerts = []
+          for h in HOLDINGS:
+              p = prices.get(h['code'])
+              if not p: continue
+              cur      = p['current']
+              pnl_pct  = (cur - h['costPrice']) / h['costPrice']
+              pnl_yuan = h['shares'] * (cur - h['costPrice'])
+
+              if pnl_pct >= h['stopAt'] + 0.05:
+                  alerts.append(f"🔴 {h['name']} 建议分批止盈\n   现价 ¥{cur}  浮盈 {pnl_pct*100:.1f}%  (+¥{pnl_yuan:.0f})\n   涨幅较大，建议先卖出 15-20%")
+              elif pnl_pct >= h['stopAt']:
+                  alerts.append(f"🟡 {h['name']} 可小额止盈\n   现价 ¥{cur}  浮盈 {pnl_pct*100:.1f}%  (+¥{pnl_yuan:.0f})\n   可考虑先卖出 5-10%")
+              elif pnl_pct <= h['addAt'] - 0.03:
+                  alerts.append(f"🟢 {h['name']} 可考虑加仓\n   现价 ¥{cur}  浮亏 {pnl_pct*100:.1f}%  (-¥{abs(pnl_yuan):.0f})\n   跌至成本价以下，可小额补仓")
+
+          if alerts:
+              msg = '\n\n'.join(alerts)
+              msg += f"\n\n查看详情：https://sprite2140-art.github.io/etf-advisor/"
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  # 写入多行环境变量
+                  f.write('NEED_ALERT=true\n')
+                  f.write('ALERT_MSG<<MSGEOF\n' + msg + '\nMSGEOF\n')
+              print('⚠️ 有提醒需要发送')
+              print(msg)
+          else:
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  f.write('NEED_ALERT=false\n')
+              print('✅ 无需提醒')
+          EOF
+
+      - name: 发送邮件提醒
+        if: env.NEED_ALERT == 'true' && env.MAIL_USERNAME != ''
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO:       ${{ secrets.MAIL_TO }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "📊 ETF 操作提醒"
+          body: ${{ env.ALERT_MSG }}
+          to: ${{ secrets.MAIL_TO }}
+          from: ETF 顾问
 
       - name: 提交更新
         run: |
           git config user.name "ETF Bot"
           git config user.email "bot@etf-advisor"
-          git add prices.json
-          # 只有文件有变化才提交
+          git add prices.json prices-history.json
           git diff --staged --quiet || git commit -m "📈 更新价格 $(date '+%H:%M')"
           git push
