@@ -1,574 +1,826 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
-  <title>我的 ETF 顾问</title>
-  <style>
-    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    :root{
-      --bg:#0d1117; --card:#161b22; --border:#21262d;
-      --text:#e6edf3; --muted:#8b949e;
-      --up:#f85149; --down:#3fb950; --yellow:#ffa657; --blue:#58a6ff; --lime:#a3e635;
-    }
-    body{background:var(--bg);color:var(--text);font-family:-apple-system,'PingFang SC','Helvetica Neue',sans-serif;min-height:100vh;padding-bottom:80px}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>ETF 决策助手</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#080e1a;--card:#0f1724;--card2:#141e2e;--border:#1e2d42;
+  --text:#e8edf5;--muted:#5a7490;--muted2:#8ba5be;
+  --up:#f87171;--down:#34d399;--yellow:#f59e0b;--blue:#3b82f6;
+  --purple:#8b5cf6;--lime:#84cc16;--pink:#ec4899;
+  --nav-h:60px;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'PingFang SC','Helvetica Neue',sans-serif;display:flex;flex-direction:column}
 
-    /* ── 头部 ── */
-    .header{display:flex;justify-content:space-between;align-items:center;padding:18px 16px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:20}
-    .header h1{font-size:18px;font-weight:700}
-    .header-sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+#main{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h) + 8px)}
+.view{display:none;padding:12px 14px;max-width:900px;margin:0 auto}
+.view.active{display:block}
 
-    /* ── 大盘指数条 ── */
-    .index-bar{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card)}
-    .index-item{flex:1;padding:10px 12px;text-align:center;border-right:1px solid var(--border)}
-    .index-item:last-child{border-right:none}
-    .index-name{font-size:10px;color:var(--muted)}
-    .index-val{font-size:14px;font-weight:700;margin-top:2px}
-    .index-chg{font-size:11px;margin-top:1px}
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:10}
+.topbar-title{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.topbar-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--muted2);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
 
-    /* ── 总览 ── */
-    .summary{margin:16px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
-    .sum-label{font-size:12px;color:var(--muted);margin-bottom:4px}
-    .sum-total{font-size:34px;font-weight:800;letter-spacing:-1px}
-    .sum-row{display:flex;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
-    .sum-cell{flex:1}
-    .sum-cell+.sum-cell{border-left:1px solid var(--border);padding-left:14px}
-    .cell-label{font-size:10px;color:var(--muted)}
-    .cell-val{font-size:15px;font-weight:700;margin-top:3px}
-    .mkt-status{display:flex;align-items:center;gap:5px;font-size:11px;margin-top:10px;color:var(--muted)}
-    .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
-    .dot.open{background:var(--down);box-shadow:0 0 6px var(--down)}
+/* BOTTOM NAV */
+.bottom-nav{height:var(--nav-h);display:flex;background:var(--card);border-top:1px solid var(--border);flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;font-size:10px;color:var(--muted);border:none;background:none}
+.nav-item .ni{font-size:20px;line-height:1}
+.nav-item.active{color:var(--blue)}
 
-    /* 仓位占比 */
-    .alloc{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
-    .alloc-title{font-size:10px;color:var(--muted);margin-bottom:7px}
-    .alloc-bar{display:flex;height:6px;border-radius:6px;overflow:hidden;gap:2px}
-    .alloc-seg{height:100%;border-radius:3px}
-    .alloc-legend{display:flex;gap:10px;margin-top:7px;flex-wrap:wrap}
-    .leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
-    .leg-dot{width:8px;height:8px;border-radius:2px}
+/* SECTION HEADER */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px}
+.sec-hd:first-child{margin-top:4px}
+.sec-hd h2{font-size:11px;font-weight:700;color:var(--muted2);letter-spacing:.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.sec-hd h2::before{content:'';display:block;width:3px;height:12px;border-radius:2px;background:var(--blue)}
+.add-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--blue);cursor:pointer;font-weight:600}
 
-    /* ── 区块标题 ── */
-    .sec-title{padding:8px 16px 4px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.b-up    {background:rgba(248,113,113,.12);color:var(--up)}
+.b-down  {background:rgba(52,211,153,.12); color:var(--down)}
+.b-neu   {background:rgba(90,116,144,.15); color:var(--muted2)}
+.b-blue  {background:rgba(59,130,246,.12); color:var(--blue)}
+.b-yellow{background:rgba(245,158,11,.12); color:var(--yellow)}
+.b-purple{background:rgba(139,92,246,.12); color:var(--purple)}
+.b-lime  {background:rgba(132,204,22,.12); color:var(--lime)}
 
-    /* ── 持仓卡片 ── */
-    .etf-card{margin:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-    .sig-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 16px}
-    .sig-label{font-size:19px;font-weight:800}
-    .sig-hint{font-size:12px;opacity:.85;text-align:right;max-width:55%;line-height:1.4}
-    .bar-sell      {background:rgba(248,81,73,.18); color:var(--up)}
-    .bar-sell-light{background:rgba(255,166,87,.18);color:var(--yellow)}
-    .bar-hold      {background:rgba(63,185,80,.18); color:var(--down)}
-    .bar-watch     {background:rgba(88,166,255,.18);color:var(--blue)}
-    .bar-buy       {background:rgba(163,230,53,.18);color:var(--lime)}
+/* INDEX BAR */
+.index-bar{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.idx{flex:1;padding:9px 8px;text-align:center;border-right:1px solid var(--border)}
+.idx:last-child{border-right:none}
+.idx-name{font-size:9px;color:var(--muted)}
+.idx-val{font-size:12px;font-weight:700;margin-top:2px}
+.idx-chg{font-size:10px;margin-top:1px}
 
-    .card-body{padding:14px 16px 0}
-    .name-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-    .etf-name{font-size:16px;font-weight:700}
-    .etf-meta{font-size:11px;color:var(--muted)}
-    .price-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .price-left{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-    .price-main{font-size:26px;font-weight:800}
-    .pbadge{font-size:12px;font-weight:600;padding:2px 7px;border-radius:4px}
-    .pbadge.up  {background:rgba(248,81,73,.12);color:var(--up)}
-    .pbadge.down{background:rgba(63,185,80,.12); color:var(--down)}
-    .pbadge.neu {background:rgba(139,148,158,.12);color:var(--muted)}
-    .today-pnl{font-size:12px;color:var(--muted)}
-    .card-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 0;border-top:1px solid var(--border)}
-    .g-label{font-size:10px;color:var(--muted)}
-    .g-val{font-size:13px;font-weight:600;margin-top:2px}
+/* SUMMARY */
+.summary{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.sum-lbl{font-size:10px;color:var(--muted);margin-bottom:3px}
+.sum-main{font-size:30px;font-weight:900;letter-spacing:-1px}
+.sum-row{display:flex;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.sum-cell{flex:1}
+.sum-cell+.sum-cell{border-left:1px solid var(--border);padding-left:12px}
+.sum-cell .l{font-size:10px;color:var(--muted)}
+.sum-cell .v{font-size:14px;font-weight:700;margin-top:2px}
+.alloc{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.alloc-lbl{font-size:10px;color:var(--muted);margin-bottom:6px}
+.alloc-bar{display:flex;height:5px;border-radius:5px;overflow:hidden;gap:2px}
+.alloc-seg{height:100%;border-radius:3px}
+.alloc-leg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.leg{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)}
+.leg-dot{width:7px;height:7px;border-radius:2px}
 
-    /* ── 计算器 ── */
-    .calc-toggle{width:100%;background:none;border:none;border-top:1px solid var(--border);padding:10px 16px;font-size:12px;color:var(--muted);cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px}
-    .calc-toggle:active{background:rgba(255,255,255,.03)}
-    .calc-panel{display:none;padding:12px 16px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
-    .calc-panel.open{display:block}
-    .calc-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-    .calc-label{font-size:12px;color:var(--muted);white-space:nowrap}
-    .pct-btns{display:flex;gap:6px;flex-wrap:wrap}
-    .pct-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;cursor:pointer}
-    .pct-btn.active{border-color:var(--blue);color:var(--blue)}
-    .calc-action{display:flex;gap:8px;margin-bottom:10px}
-    .action-btn{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;cursor:pointer}
-    .action-btn.active.buy {border-color:var(--lime);color:var(--lime)}
-    .action-btn.active.sell{border-color:var(--up);  color:var(--up)}
-    .calc-result{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.8}
+/* ETF CARD */
+.etf-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px}
+.sig-bar{padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.sig-lbl{font-size:17px;font-weight:900}
+.sig-hint{font-size:11px;line-height:1.4;text-align:right;max-width:58%}
+.card-body{padding:14px;border-top:1px solid var(--border)}
+.card-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.g-l{font-size:10px;color:var(--muted)}
+.g-v{font-size:13px;font-weight:600;margin-top:2px}
 
-    /* ── 观察列表 ── */
-    .watch-card{margin:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
-    .watch-name{font-size:15px;font-weight:700}
-    .watch-desc{font-size:11px;color:var(--muted);margin-top:2px}
-    .watch-price{font-size:18px;font-weight:800;text-align:right}
-    .watch-chg{font-size:12px;font-weight:600;margin-top:2px;text-align:right}
+/* CALC */
+.calc-toggle{width:100%;background:none;border:none;border-top:1px solid var(--border);padding:9px 14px;font-size:11px;color:var(--muted);cursor:pointer;text-align:left}
+.calc-panel{display:none;padding:10px 14px 14px;border-top:1px solid var(--border);background:rgba(255,255,255,.015)}
+.calc-panel.open{display:block}
+.pct-row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.pct-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;cursor:pointer}
+.pct-btn.active{border-color:var(--blue);color:var(--blue)}
+.act-row{display:flex;gap:6px;margin-bottom:8px}
+.act-btn{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;cursor:pointer}
+.act-btn.buy.on {border-color:var(--lime);color:var(--lime)}
+.act-btn.sell.on{border-color:var(--up);  color:var(--up)}
+.calc-res{background:var(--bg);border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.9;color:var(--muted)}
 
-    /* ── 规则 ── */
-    .rules-card{margin:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
-    .rule-row{padding:8px 0;font-size:13px;color:#c9d1d9;line-height:1.6;border-bottom:1px solid var(--border)}
-    .rule-row:last-child{border-bottom:none;padding-bottom:0}
+/* WATCH CARD */
+.watch-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 
-    /* ── 操作记录浮动按钮 ── */
-    .fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(88,166,255,.4);z-index:30;display:flex;align-items:center;justify-content:center}
+/* EVENT CARD */
+.ev-card{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:10px}
+.ev-top{padding:12px 14px 10px}
+.ev-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.ev-title{font-size:14px;font-weight:700;line-height:1.4;margin-bottom:5px}
+.ev-body{font-size:12px;color:var(--muted2);line-height:1.6}
+.ev-foot{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-top:1px solid var(--border);background:rgba(255,255,255,.015)}
+.ev-meta{font-size:10px;color:var(--muted)}
+.ev-actions{display:flex;gap:6px}
+.ev-btn{font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--muted2);cursor:pointer}
 
-    /* ── 操作记录弹窗 ── */
-    .modal-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:40}
-    .modal-mask.open{display:flex;align-items:flex-end}
-    .modal{width:100%;max-height:90vh;background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px;overflow-y:auto}
-    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .modal-header h2{font-size:17px;font-weight:700}
-    .modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+/* NOTE CARD */
+.note-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:10px}
+.note-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.note-title{font-size:14px;font-weight:700;margin-bottom:6px}
+.note-body{font-size:12px;color:var(--muted2);line-height:1.7;white-space:pre-wrap}
+.note-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
 
-    /* 记录表单 */
-    .form-row{margin-bottom:12px}
-    .form-label{font-size:12px;color:var(--muted);margin-bottom:5px}
-    .form-select,.form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px}
-    .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .form-action-row{display:flex;gap:8px;margin-bottom:12px}
-    .form-action-btn{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:14px;cursor:pointer;font-weight:600}
-    .form-action-btn.sel.buy {border-color:var(--lime);color:var(--lime);background:rgba(163,230,53,.08)}
-    .form-action-btn.sel.sell{border-color:var(--up);  color:var(--up);  background:rgba(248,81,73,.08)}
-    .submit-btn{width:100%;padding:12px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+/* LEAD CARD */
+.lead-card{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:10px}
+.lead-top{padding:13px 14px 11px}
+.lead-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.lead-name{font-size:15px;font-weight:800}
+.lead-code{font-size:10px;color:var(--muted);margin-top:2px}
+.lead-thesis{font-size:12px;color:var(--muted2);line-height:1.6;margin-bottom:8px}
+.lead-prices{display:flex;gap:14px;font-size:11px;flex-wrap:wrap}
+.lp-l{color:var(--muted);margin-bottom:2px;font-size:10px}
+.lp-v{font-weight:700;font-size:14px}
+.lead-foot{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-top:1px solid var(--border);background:rgba(255,255,255,.015)}
 
-    /* 记录列表 */
-    .log-list{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
-    .log-empty{text-align:center;color:var(--muted);font-size:13px;padding:20px}
-    .log-item{padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
-    .log-item:last-child{border-bottom:none}
-    .log-left .log-top{font-size:13px;font-weight:600}
-    .log-left .log-bot{font-size:11px;color:var(--muted);margin-top:3px}
-    .log-right{text-align:right}
-    .log-amount{font-size:14px;font-weight:700}
-    .log-signal{font-size:10px;color:var(--muted);margin-top:3px}
-    .log-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 0 0 8px}
+/* RULES */
+.rules-card{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:10px}
+.rule-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:none;border:none;cursor:pointer}
+.rules-body{display:none;padding:4px 14px 14px}
+.rules-body.open{display:block}
+.rule-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted2);line-height:1.6}
+.rule-item:last-child{border-bottom:none;padding-bottom:0}
 
-    /* ── 颜色 ── */
-    .up  {color:var(--up)}
-    .down{color:var(--down)}
-    .neu {color:var(--muted)}
+/* FILTER TABS */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ftab{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted2);cursor:pointer}
+.ftab.active{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.4);color:var(--blue)}
 
-    .footer{text-align:center;font-size:11px;color:var(--muted);margin-top:20px}
-  </style>
+/* FAB */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 14px);right:16px;width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:0 4px 14px rgba(59,130,246,.45);z-index:20;display:flex;align-items:center;justify-content:center}
+
+/* MODAL */
+.modal-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;align-items:flex-end}
+.modal-mask.open{display:flex}
+.modal{width:100%;max-height:88vh;background:var(--card);border-radius:20px 20px 0 0;overflow-y:auto;padding:18px 15px 28px}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.modal-hd h2{font-size:16px;font-weight:800}
+.modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+.form-row{margin-bottom:11px}
+.form-lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit}
+.form-textarea{resize:vertical;min-height:80px;line-height:1.6}
+.form-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.faction-row{display:flex;gap:7px;margin-bottom:11px}
+.faction-btn{flex:1;padding:8px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;font-weight:600;text-align:center}
+.faction-btn.on.bull{border-color:var(--up);  color:var(--up);  background:rgba(248,113,113,.07)}
+.faction-btn.on.bear{border-color:var(--down); color:var(--down);background:rgba(52,211,153,.07)}
+.faction-btn.on.neu {border-color:var(--blue); color:var(--blue);background:rgba(59,130,246,.07)}
+.faction-btn.on.buy {border-color:var(--lime); color:var(--lime);background:rgba(132,204,22,.07)}
+.faction-btn.on.sell{border-color:var(--up);   color:var(--up);  background:rgba(248,113,113,.07)}
+.faction-btn.on.low {border-color:var(--down); color:var(--down);background:rgba(52,211,153,.07)}
+.faction-btn.on.mid {border-color:var(--yellow);color:var(--yellow);background:rgba(245,158,11,.07)}
+.faction-btn.on.high{border-color:var(--up);   color:var(--up);  background:rgba(248,113,113,.07)}
+.faction-btn.on.analysis{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.07)}
+.faction-btn.on.news{border-color:var(--muted2);color:var(--muted2);background:rgba(139,165,190,.07)}
+.faction-btn.on.idea{border-color:var(--yellow);color:var(--yellow);background:rgba(245,158,11,.07)}
+.submit-btn{width:100%;padding:12px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px}
+
+/* LOG */
+.log-list{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.log-empty{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+.log-item{padding:11px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
+.log-item:last-child{border-bottom:none}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-text{font-size:13px;line-height:1.8}
+
+.up{color:var(--up)}.down{color:var(--down)}.lime{color:var(--lime)}.yellow{color:var(--yellow)}
+
+.fade-in{animation:fi .2s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
 </head>
 <body>
 
-<div class="header">
+<div class="topbar">
   <div>
-    <h1>我的 ETF 顾问</h1>
-    <div class="header-sub" id="updateTime">加载中...</div>
+    <div class="topbar-title">ETF 决策助手</div>
+    <div class="topbar-sub" id="updateTime">加载中...</div>
   </div>
-  <button class="btn-ghost" onclick="loadAll()">↻ 刷新</button>
+  <button class="icon-btn" onclick="loadAll()">↻ 刷新</button>
 </div>
 
-<!-- 大盘指数 -->
-<div class="index-bar" id="indexBar">
-  <div class="index-item"><div class="index-name">上证</div><div class="index-val neu">--</div><div class="index-chg neu">--</div></div>
-  <div class="index-item"><div class="index-name">深成</div><div class="index-val neu">--</div><div class="index-chg neu">--</div></div>
-  <div class="index-item"><div class="index-name">创业板</div><div class="index-val neu">--</div><div class="index-chg neu">--</div></div>
-</div>
+<div id="main">
 
-<div class="summary" id="summaryArea"><div class="sum-label">总资产</div><div class="sum-total">计算中...</div></div>
-
-<div class="sec-title">持仓分析</div>
-<div id="holdingCards"></div>
-
-<div class="sec-title">观察列表</div>
-<div id="watchCards"></div>
-
-<div class="sec-title">我的操作规则</div>
-<div class="rules-card">
-  <div class="rule-row">🚫 <strong>不追高</strong> — 某只涨幅超过 15%，先别加仓，等等看</div>
-  <div class="rule-row">💰 <strong>分批止盈</strong> — 浮盈超 15%，先卖出 10-20%，不贪</div>
-  <div class="rule-row">📉 <strong>分批加仓</strong> — 跌回成本价附近，可以小额补仓</div>
-  <div class="rule-row">⏸️ <strong>默认不动</strong> — 不确定该怎么做？什么都不做就对了</div>
-  <div class="rule-row">🔄 <strong>分批原则</strong> — 买卖都要分批，永远不一次全买全卖</div>
-</div>
-
-<div class="footer">数据来源：新浪财经 · 仅供参考，不构成投资建议</div>
-
-<!-- 操作记录浮动按钮 -->
-<button class="fab" onclick="openLog()" title="操作记录">📝</button>
-
-<!-- 操作记录弹窗 -->
-<div class="modal-mask" id="logMask" onclick="closeMask(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>📝 操作记录</h2>
-      <button class="modal-close" onclick="closeLog()">×</button>
+  <!-- 持仓 -->
+  <div class="view active" id="view-portfolio">
+    <div style="margin-top:12px">
+      <div class="index-bar" id="indexBar">
+        <div class="idx"><div class="idx-name">上证</div><div class="idx-val">--</div><div class="idx-chg">--</div></div>
+        <div class="idx"><div class="idx-name">深成</div><div class="idx-val">--</div><div class="idx-chg">--</div></div>
+        <div class="idx"><div class="idx-name">创业板</div><div class="idx-val">--</div><div class="idx-chg">--</div></div>
+        <div class="idx"><div class="idx-name">纳指</div><div class="idx-val">--</div><div class="idx-chg">--</div></div>
+      </div>
     </div>
+    <div class="summary" id="summaryArea"><div class="sum-lbl">ETF 总市值</div><div class="sum-main">计算中...</div></div>
+    <div id="todayEventsHint"></div>
+    <div class="sec-hd"><h2>持仓分析</h2></div>
+    <div id="holdingCards"></div>
+    <div class="sec-hd"><h2>观察列表</h2></div>
+    <div id="watchCards"></div>
+    <div class="sec-hd"><h2>操作规则</h2></div>
+    <div class="rules-card">
+      <button class="rule-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.lastElementChild.textContent=this.nextElementSibling.classList.contains('open')?'▲':'▼'">
+        <span style="font-size:11px;color:var(--muted2);font-weight:600">📋 减少冲动交易的核心原则</span><span style="font-size:10px;color:var(--muted)">▼</span>
+      </button>
+      <div class="rules-body">
+        <div class="rule-item">🚫 <strong>不追高</strong> — 某只涨幅超过 15%，先别加仓，等等看</div>
+        <div class="rule-item">💰 <strong>分批止盈</strong> — 浮盈超 15%，先卖出 10-20%，不贪最高点</div>
+        <div class="rule-item">📉 <strong>分批加仓</strong> — 跌回成本价附近（-5% 内），可以小额补仓</div>
+        <div class="rule-item">⏸️ <strong>默认不动</strong> — 不确定该怎么做？什么都不做就对了</div>
+        <div class="rule-item">🔄 <strong>分批原则</strong> — 买卖都要分批，永远不一次全买全卖</div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:10px;color:var(--muted);padding:8px 0 4px">数据来源：新浪财经 · 仅供参考，不构成投资建议</div>
+  </div>
 
-    <!-- 新增表单 -->
-    <div class="form-row">
-      <div class="form-label">ETF</div>
+  <!-- 事件 -->
+  <div class="view" id="view-events">
+    <div style="margin-top:12px">
+      <div class="sec-hd"><h2>事件跟踪</h2><button class="add-btn" onclick="openModal('event')">+ 新增</button></div>
+      <div class="filter-row" id="evFilters">
+        <button class="ftab active" onclick="filterEvents('all',this)">全部</button>
+        <button class="ftab" onclick="filterEvents('bull',this)">📈 利多</button>
+        <button class="ftab" onclick="filterEvents('bear',this)">📉 利空</button>
+        <button class="ftab" onclick="filterEvents('neu',this)">➡ 中性</button>
+        <button class="ftab" onclick="filterEvents('unpriced',this)">未定价机会</button>
+      </div>
+      <div id="evList"></div>
+    </div>
+  </div>
+
+  <!-- 研究 -->
+  <div class="view" id="view-research">
+    <div style="margin-top:12px">
+      <div class="sec-hd"><h2>研究笔记</h2><button class="add-btn" onclick="openModal('note')">+ 新增</button></div>
+      <div class="filter-row">
+        <button class="ftab active" onclick="filterNotes('all',this)">全部</button>
+        <button class="ftab" onclick="filterNotes('159869',this)">游戏ETF</button>
+        <button class="ftab" onclick="filterNotes('161125',this)">标普500</button>
+        <button class="ftab" onclick="filterNotes('159583',this)">通信ETF</button>
+        <button class="ftab" onclick="filterNotes('analysis',this)">🔬 分析</button>
+        <button class="ftab" onclick="filterNotes('idea',this)">💡 想法</button>
+      </div>
+      <div id="noteList"></div>
+    </div>
+  </div>
+
+  <!-- 线索 -->
+  <div class="view" id="view-leads">
+    <div style="margin-top:12px">
+      <div class="sec-hd"><h2>ETF 线索库</h2><button class="add-btn" onclick="openModal('lead')">+ 添加</button></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;line-height:1.7">
+        💡 感兴趣但还没买的 ETF 放这里。记下买入逻辑，等价格合适再动。
+      </div>
+      <div id="leadList"></div>
+    </div>
+  </div>
+
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchView('portfolio',this)"><span class="ni">📊</span><span>持仓</span></button>
+  <button class="nav-item" onclick="switchView('events',this)"><span class="ni">📰</span><span>事件</span></button>
+  <button class="nav-item" onclick="switchView('research',this)"><span class="ni">📝</span><span>研究</span></button>
+  <button class="nav-item" onclick="switchView('leads',this)"><span class="ni">🔍</span><span>线索</span></button>
+</nav>
+
+<button class="fab" onclick="openModal('log')">📋</button>
+
+<!-- MODALS -->
+<div class="modal-mask" id="maskEvent" onclick="closeMask(event,'maskEvent')">
+  <div class="modal">
+    <div class="modal-hd"><h2>📰 新增事件</h2><button class="modal-close" onclick="closeModal('maskEvent')">×</button></div>
+    <div class="form-row"><div class="form-lbl">事件标题</div><input class="form-input" id="evTitle" placeholder="如：美联储暗示年内降息两次"></div>
+    <div class="form-lbl" style="margin-bottom:5px">影响方向</div>
+    <div class="faction-row">
+      <button class="faction-btn bull on" id="fb-bull" onclick="sel('ev','bull')">📈 利多</button>
+      <button class="faction-btn bear" id="fb-bear" onclick="sel('ev','bear')">📉 利空</button>
+      <button class="faction-btn neu"  id="fb-neu"  onclick="sel('ev','neu')">➡ 中性</button>
+    </div>
+    <div class="form-row"><div class="form-lbl">关联 ETF（代码，逗号分隔，留空=全市场）</div><input class="form-input" id="evEtf" placeholder="如：159869,159583"></div>
+    <div class="form-row"><div class="form-lbl">影响逻辑（为什么重要？）</div><textarea class="form-textarea" id="evBody" placeholder="这个事件对持仓有什么影响？需要关注什么？"></textarea></div>
+    <div class="form-2col">
+      <div class="form-row"><div class="form-lbl">来源</div><input class="form-input" id="evSrc" placeholder="如：财联社"></div>
+      <div class="form-row"><div class="form-lbl">定价状态</div>
+        <select class="form-select" id="evPricing">
+          <option value="unpriced">未定价（机会仍在）</option>
+          <option value="partial">部分定价</option>
+          <option value="priced">已充分定价</option>
+        </select>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="saveEvent()">保存事件</button>
+  </div>
+</div>
+
+<div class="modal-mask" id="maskNote" onclick="closeMask(event,'maskNote')">
+  <div class="modal">
+    <div class="modal-hd"><h2>📝 新增笔记</h2><button class="modal-close" onclick="closeModal('maskNote')">×</button></div>
+    <div class="form-row"><div class="form-lbl">标题</div><input class="form-input" id="noteTitle" placeholder="如：游戏ETF近期逻辑分析"></div>
+    <div class="form-lbl" style="margin-bottom:5px">类型</div>
+    <div class="faction-row">
+      <button class="faction-btn analysis on" id="nt-analysis" onclick="sel('note','analysis')">🔬 分析</button>
+      <button class="faction-btn news" id="nt-news" onclick="sel('note','news')">📰 新闻</button>
+      <button class="faction-btn idea" id="nt-idea" onclick="sel('note','idea')">💡 想法</button>
+    </div>
+    <div class="form-row"><div class="form-lbl">关联 ETF（代码，逗号分隔，留空=通用）</div><input class="form-input" id="noteEtf" placeholder="如：159869"></div>
+    <div class="form-row"><div class="form-lbl">内容</div><textarea class="form-textarea" id="noteBody" style="min-height:120px" placeholder="写下你的分析、观察或想法..."></textarea></div>
+    <button class="submit-btn" onclick="saveNote()">保存笔记</button>
+  </div>
+</div>
+
+<div class="modal-mask" id="maskLead" onclick="closeMask(event,'maskLead')">
+  <div class="modal">
+    <div class="modal-hd"><h2>🔍 添加 ETF 线索</h2><button class="modal-close" onclick="closeModal('maskLead')">×</button></div>
+    <div class="form-2col">
+      <div class="form-row"><div class="form-lbl">ETF 代码</div><input class="form-input" id="leadCode" placeholder="如：588000"></div>
+      <div class="form-row"><div class="form-lbl">名称</div><input class="form-input" id="leadName" placeholder="如：科创50ETF"></div>
+    </div>
+    <div class="form-lbl" style="margin-bottom:5px">风险等级</div>
+    <div class="faction-row">
+      <button class="faction-btn low" id="lr-low" onclick="sel('lead','low')">🟢 低风险</button>
+      <button class="faction-btn mid on" id="lr-mid" onclick="sel('lead','mid')">🟡 中风险</button>
+      <button class="faction-btn high" id="lr-high" onclick="sel('lead','high')">🔴 高风险</button>
+    </div>
+    <div class="form-row"><div class="form-lbl">买入逻辑（为什么想买？触发条件是什么？）</div><textarea class="form-textarea" id="leadThesis" placeholder="这只 ETF 的投资逻辑..."></textarea></div>
+    <div class="form-2col">
+      <div class="form-row"><div class="form-lbl">目标买入价（可选）</div><input class="form-input" id="leadTarget" type="number" step="0.001" placeholder="如：0.950"></div>
+      <div class="form-row"><div class="form-lbl">市场</div>
+        <select class="form-select" id="leadMarket"><option value="A">A 股</option><option value="US">美股</option><option value="HK">港股</option></select>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="saveLead()">添加线索</button>
+  </div>
+</div>
+
+<div class="modal-mask" id="maskLog" onclick="closeMask(event,'maskLog')">
+  <div class="modal">
+    <div class="modal-hd"><h2>📋 操作记录</h2><button class="modal-close" onclick="closeModal('maskLog')">×</button></div>
+    <div class="form-row"><div class="form-lbl">ETF</div>
       <select class="form-select" id="logEtf">
-        <option value="sz159869|游戏ETF">游戏ETF</option>
-        <option value="sz161125|标普500LOF">标普500LOF</option>
-        <option value="sz159583|通信设备ETF">通信设备ETF</option>
+        <option value="sz159869|游戏ETF">游戏ETF (159869)</option>
+        <option value="sz161125|标普500LOF">标普500LOF (161125)</option>
+        <option value="sz159583|通信设备ETF">通信设备ETF (159583)</option>
       </select>
     </div>
-    <div class="form-label">操作类型</div>
-    <div class="form-action-row">
-      <button class="form-action-btn buy" id="logActBuy" onclick="selectLogAction('买入')">买入</button>
-      <button class="form-action-btn sell" id="logActSell" onclick="selectLogAction('卖出')">卖出</button>
+    <div class="form-lbl" style="margin-bottom:5px">操作类型</div>
+    <div class="faction-row">
+      <button class="faction-btn buy on" id="la-buy" onclick="sel('log','buy')">买入</button>
+      <button class="faction-btn sell" id="la-sell" onclick="sel('log','sell')">卖出</button>
     </div>
     <div class="form-2col">
-      <div class="form-row">
-        <div class="form-label">成交价格（元）</div>
-        <input class="form-input" id="logPrice" type="number" step="0.001" placeholder="如 1.304">
-      </div>
-      <div class="form-row">
-        <div class="form-label">份数</div>
-        <input class="form-input" id="logShares" type="number" placeholder="如 5000">
-      </div>
+      <div class="form-row"><div class="form-lbl">成交价（元）</div><input class="form-input" id="logPrice" type="number" step="0.001" placeholder="如 1.320"></div>
+      <div class="form-row"><div class="form-lbl">份数</div><input class="form-input" id="logShares" type="number" placeholder="如 5000"></div>
     </div>
-    <div class="form-row">
-      <div class="form-label">备注（可不填）</div>
-      <input class="form-input" id="logNote" placeholder="如：系统建议继续持有，但我觉得...">
-    </div>
+    <div class="form-row"><div class="form-lbl">备注（可选）</div><input class="form-input" id="logNote" placeholder="如：系统建议继续持有，但我判断..."></div>
     <button class="submit-btn" onclick="saveLog()">保存记录</button>
-
-    <!-- 历史记录 -->
     <div class="log-list" id="logList"></div>
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════════
-// 持仓配置
-// ══════════════════════════════════════
-const HOLDINGS = [
-  {code:'sz159869',name:'游戏ETF',    shares:55000, costPrice:1.198,type:'thematic',  desc:'游戏行业 · 弹性大波动大',    stopProfitAt:.15,addPositionAt:-.05,color:'#a78bfa'},
-  {code:'sz161125',name:'标普500LOF', shares:33100, costPrice:2.795,type:'config',    desc:'美国大市场 · 相对稳定',       stopProfitAt:.20,addPositionAt:-.08,color:'#60a5fa'},
-  {code:'sz159583',name:'通信设备ETF',shares:90600, costPrice:1.267,type:'aggressive',desc:'中国科技制造 · 进攻型',        stopProfitAt:.15,addPositionAt:-.05,color:'#34d399'},
-];
-
-const WATCHLIST = [
-  {code:'sh510300',name:'沪深300ETF',desc:'大盘蓝筹 · 最核心的配置'},
+// ═══════════════════════════════ CONFIG ═══════════════════════════════
+const HOLDINGS=[
+  {code:'sz159869',name:'游戏ETF',    shares:55000,cost:1.198,stopAt:.15,addAt:-.05,color:'#a78bfa',desc:'游戏行业 · 弹性大波动大'},
+  {code:'sz161125',name:'标普500LOF', shares:33100,cost:2.795,stopAt:.20,addAt:-.08,color:'#60a5fa',desc:'美国大市场 · 相对稳定'},
+  {code:'sz159583',name:'通信设备ETF',shares:90600,cost:1.267,stopAt:.15,addAt:-.05,color:'#34d399',desc:'中国科技制造 · 进攻型'},
+]
+const WATCHLIST=[
+  {code:'sh510300',name:'沪深300ETF',desc:'大盘蓝筹 · 最核心配置'},
   {code:'sh588000',name:'科创50ETF', desc:'科创板 · 高风险高收益'},
   {code:'sh513100',name:'纳指ETF',   desc:'纳斯达克100 · 美国科技'},
-];
-
-const INDICES = [
-  {code:'sh000001',name:'上证'},
-  {code:'sz399001',name:'深成'},
-  {code:'sz399006',name:'创业板'},
-];
-
-// ══════════════════════════════════════
-// 操作建议逻辑
-// ══════════════════════════════════════
-function getSignal(pnlPct, etf) {
-  const p = pnlPct;
-  if (p >= etf.stopProfitAt+.05) return {label:'分批止盈',css:'bar-sell',      hint:`涨了 ${pct(p)}，先卖 15-20%`};
-  if (p >= etf.stopProfitAt)     return {label:'小额止盈',css:'bar-sell-light', hint:`浮盈 ${pct(p)}，可先卖 5-10%`};
-  if (p >= .03)                  return {label:'继续持有',css:'bar-hold',       hint:`浮盈 ${pct(p)}，不用动`};
-  if (p >= etf.addPositionAt)    return {label:'观察',    css:'bar-watch',      hint:'接近成本价，先等等'};
-  return                                {label:'可小额加仓',css:'bar-buy',      hint:`跌破成本 ${pct(Math.abs(p))}，可补仓`};
-}
-
-// ══════════════════════════════════════
-// 走势图 SVG
-// ══════════════════════════════════════
-function sparkline(points, isUp) {
-  if (!points||points.length<2) return '<svg width="72" height="26"></svg>';
-  const W=72,H=26,mn=Math.min(...points),mx=Math.max(...points),rng=mx-mn||.001;
-  const xs=points.map((_,i)=>(i/(points.length-1))*W);
-  const ys=points.map(p=>H-3-((p-mn)/rng)*(H-6));
-  const pts=xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
-  const fill=`0,${H} `+pts+` ${W},${H}`;
-  const sc=isUp?'var(--up)':'var(--down)';
-  const fc=isUp?'rgba(248,81,73,.08)':'rgba(63,185,80,.08)';
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex-shrink:0">
-    <polygon points="${fill}" fill="${fc}"/>
-    <polyline points="${pts}" fill="none" stroke="${sc}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-}
-
-// ══════════════════════════════════════
-// 加载数据
-// ══════════════════════════════════════
-const FB = {
+]
+const INDICES=[
+  {code:'sh000001',name:'上证'},{code:'sz399001',name:'深成'},
+  {code:'sz399006',name:'创业板'},{code:'sh513100',name:'纳指'},
+]
+const FB={
   'sz159869':{current:1.320,prevClose:1.344},'sz161125':{current:2.829,prevClose:2.833},
   'sz159583':{current:1.386,prevClose:1.357},'sh510300':{current:4.10,prevClose:4.09},
   'sh588000':{current:1.05,prevClose:1.04},'sh513100':{current:2.80,prevClose:2.82},
-  'sh000001':{current:3350,prevClose:3320},'sz399001':{current:10200,prevClose:10150},'sz399006':{current:2080,prevClose:2060},
-};
-let history = {};
+  'sh000001':{current:3350,prevClose:3320},'sz399001':{current:10200,prevClose:10150},
+  'sz399006':{current:2080,prevClose:2060},
+}
+let PRICES={},HISTORY={}
 
-async function loadAll() {
-  setStatus('获取最新数据...');
-  const [pd, hd] = await Promise.all([fetchJ('prices.json'), fetchJ('prices-history.json')]);
-  const prices = (pd?.success && pd.data) ? pd.data : FB;
-  history = hd || {};
-  renderIndices(prices);
-  renderSummary(prices);
-  renderHoldings(prices);
-  renderWatchlist(prices);
-  setStatus('数据更新于 '+(pd?.updatedAt||'—'));
+// ═══════════════════════════════ NAV ═══════════════════════════════
+function switchView(id,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'))
+  document.getElementById('view-'+id).classList.add('active')
+  btn.classList.add('active')
+  document.getElementById('main').scrollTop=0
+  if(id==='events')renderEvents()
+  if(id==='research')renderNotes()
+  if(id==='leads')renderLeads()
 }
 
-async function fetchJ(url) {
-  try { const r=await fetch(url+'?t='+Date.now()); if(r.ok) return r.json(); } catch(_){}
-  return null;
+// ═══════════════════════════════ DATA ═══════════════════════════════
+async function loadAll(){
+  document.getElementById('updateTime').textContent='获取中...'
+  try{
+    const[pd,hd]=await Promise.all([
+      fetch('prices.json?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('prices-history.json?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+    ])
+    if(pd?.success&&pd.data)PRICES=pd.data
+    if(hd)HISTORY=hd
+    document.getElementById('updateTime').textContent='更新于 '+(pd?.updatedAt||new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}))
+  }catch{document.getElementById('updateTime').textContent='演示数据'}
+  renderAll()
 }
-function setStatus(m){ document.getElementById('updateTime').textContent=m; }
+function gp(code){const p=PRICES[code]||FB[code]||{};return{cur:p.current??p.cur??1,prev:p.prevClose??p.prev??1}}
 
-// ══════════════════════════════════════
-// 渲染大盘指数
-// ══════════════════════════════════════
-function renderIndices(prices) {
-  const bar = document.getElementById('indexBar');
-  bar.innerHTML = INDICES.map(idx => {
-    const p = prices[idx.code];
-    if (!p) return `<div class="index-item"><div class="index-name">${idx.name}</div><div class="index-val neu">--</div><div class="index-chg neu">--</div></div>`;
-    const chg = (p.current - p.prevClose) / p.prevClose;
-    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'neu';
-    const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '—';
-    return `<div class="index-item">
-      <div class="index-name">${idx.name}</div>
-      <div class="index-val ${cls}">${p.current >= 1000 ? p.current.toFixed(2) : p.current.toFixed(3)}</div>
-      <div class="index-chg ${cls}">${arrow} ${pct(Math.abs(chg))}</div>
-    </div>`;
-  }).join('');
+// ═══════════════════════════════ SIGNAL ═══════════════════════════════
+function sig(pnl,etf){
+  if(pnl>=etf.stopAt+.05)return{label:'分批止盈',hint:`浮盈 ${fp(pnl)}，超目标，先卖 15-20%`,color:'#f87171',border:'#ef4444',bg:'rgba(239,68,68,.07)'}
+  if(pnl>=etf.stopAt)    return{label:'小额止盈',hint:`浮盈 ${fp(pnl)}，可先卖 5-10%`,color:'#fb923c',border:'#f97316',bg:'rgba(249,115,22,.07)'}
+  if(pnl>=.03)           return{label:'继续持有',hint:`浮盈 ${fp(pnl)}，无需操作`,color:'#34d399',border:'#10b981',bg:'rgba(16,185,129,.07)'}
+  if(pnl>=etf.addAt)     return{label:'观察',    hint:'接近成本价，暂时不动',color:'#60a5fa',border:'#3b82f6',bg:'rgba(59,130,246,.07)'}
+  return                        {label:'可小额加仓',hint:`跌破成本 ${fp(Math.abs(pnl))}，可补仓`,color:'#84cc16',border:'#84cc16',bg:'rgba(132,204,22,.07)'}
 }
 
-// ══════════════════════════════════════
-// 渲染总览
-// ══════════════════════════════════════
-function renderSummary(prices) {
-  let totalCost=0, totalValue=0, todayTotal=0;
-  const rows = HOLDINGS.map(etf => {
-    const p = prices[etf.code]||FB[etf.code];
-    const value = etf.shares * p.current;
-    const cost  = etf.shares * etf.costPrice;
-    totalCost  += cost; totalValue += value;
-    todayTotal += etf.shares * (p.current - p.prevClose);
-    return {etf, value};
-  });
-  const totalPnl = totalValue - totalCost;
-  const totalPct = totalPnl / totalCost;
+// ═══════════════════════════════ SPARKLINE ═══════════════════════════════
+function spark(pts,up){
+  if(!pts||pts.length<2)return`<svg width="64" height="22"></svg>`
+  const W=64,H=22,mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||.001
+  const line=pts.map((p,i)=>`${((i/(pts.length-1))*W).toFixed(1)},${(H-2-((p-mn)/rng)*(H-4)).toFixed(1)}`).join(' ')
+  const fill=`0,${H} ${line} ${W},${H}`
+  const c=up?'#f87171':'#34d399',f=up?'rgba(248,113,113,.07)':'rgba(52,211,153,.07)'
+  return`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex-shrink:0">
+    <polygon points="${fill}" fill="${f}"/>
+    <polyline points="${line}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`
+}
 
-  document.getElementById('summaryArea').innerHTML = `
-    <div class="sum-label">总资产</div>
-    <div class="sum-total ${totalPct>=0?'up':'down'}">¥${Math.round(totalValue).toLocaleString()}</div>
+// ═══════════════════════════════ RENDER ═══════════════════════════════
+function renderAll(){renderIndices();renderSummary();renderHoldings();renderWatchlist();renderTodayEventsHint()}
+
+function renderIndices(){
+  document.getElementById('indexBar').innerHTML=INDICES.map(idx=>{
+    const p=gp(idx.code),chg=(p.cur-p.prev)/p.prev
+    const cls=chg>0?'up':chg<0?'down':'',arr=chg>0?'▲':chg<0?'▼':'—'
+    return`<div class="idx"><div class="idx-name">${idx.name}</div><div class="idx-val ${cls}">${p.cur>=100?p.cur.toFixed(2):p.cur.toFixed(3)}</div><div class="idx-chg ${cls}">${arr} ${fp(Math.abs(chg))}</div></div>`
+  }).join('')
+}
+
+function renderSummary(){
+  let tv=0,tc=0,td=0
+  const rows=HOLDINGS.map(etf=>{
+    const p=gp(etf.code),val=etf.shares*p.cur,cost=etf.shares*etf.cost
+    tv+=val;tc+=cost;td+=etf.shares*(p.cur-p.prev)
+    return{etf,val}
+  })
+  const pnl=tv-tc,pct=pnl/tc
+  document.getElementById('summaryArea').innerHTML=`
+    <div class="sum-lbl">ETF 总市值</div>
+    <div class="sum-main ${pct>=0?'up':'down'}">¥${Math.round(tv).toLocaleString()}</div>
     <div class="sum-row">
-      <div class="sum-cell"><div class="cell-label">总成本</div><div class="cell-val">¥${Math.round(totalCost).toLocaleString()}</div></div>
-      <div class="sum-cell"><div class="cell-label">总浮盈</div><div class="cell-val ${totalPct>=0?'up':'down'}">${money(totalPnl)}</div></div>
-      <div class="sum-cell"><div class="cell-label">今日盈亏</div><div class="cell-val ${todayTotal>=0?'up':'down'}">${money(todayTotal)}</div></div>
+      <div class="sum-cell"><div class="l">总成本</div><div class="v">¥${Math.round(tc).toLocaleString()}</div></div>
+      <div class="sum-cell"><div class="l">总浮盈</div><div class="v ${pct>=0?'up':'down'}">${mn(pnl)} <span style="font-size:11px;font-weight:400">${pp(pct)}</span></div></div>
+      <div class="sum-cell"><div class="l">今日盈亏</div><div class="v ${td>=0?'up':'down'}">${mn(td)}</div></div>
     </div>
-    <div class="mkt-status"><div class="dot ${isOpen()?'open':''}"></div>${isOpen()?'开市中（自动刷新）':'休市'}</div>
     <div class="alloc">
-      <div class="alloc-title">仓位占比</div>
-      <div class="alloc-bar">${rows.map((r,i)=>`<div class="alloc-seg" style="flex:${r.value};background:${COLORS[i]};opacity:.85"></div>`).join('')}</div>
-      <div class="alloc-legend">${rows.map((r,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i]}"></div>${r.etf.name} ${pct(r.value/totalValue)}</div>`).join('')}</div>
-    </div>`;
+      <div class="alloc-lbl">仓位占比</div>
+      <div class="alloc-bar">${rows.map(r=>`<div class="alloc-seg" style="flex:${r.val};background:${r.etf.color};opacity:.8"></div>`).join('')}</div>
+      <div class="alloc-leg">${rows.map(r=>`<div class="leg"><div class="leg-dot" style="background:${r.etf.color}"></div>${r.etf.name} ${fp(r.val/tv)}</div>`).join('')}</div>
+    </div>`
 }
 
-// ══════════════════════════════════════
-// 渲染持仓卡片（含计算器）
-// ══════════════════════════════════════
-const COLORS = ['#a78bfa','#60a5fa','#34d399'];
+function renderTodayEventsHint(){
+  const today=new Date().toISOString().slice(0,10)
+  const evs=getEvents().filter(e=>e.date===today)
+  const el=document.getElementById('todayEventsHint')
+  if(!evs.length){el.innerHTML='';return}
+  const dc={bull:'b-up',bear:'b-down',neu:'b-neu'},dl={bull:'利多',bear:'利空',neu:'中性'}
+  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:12px;padding:11px 14px;margin-bottom:10px" class="fade-in">
+    <div style="font-size:10px;color:var(--yellow);font-weight:700;margin-bottom:7px">⚡ 今日事件 · ${evs.length}条</div>
+    ${evs.map(e=>`<div style="font-size:12px;margin-bottom:5px;display:flex;gap:6px;align-items:flex-start"><span class="badge ${dc[e.dir]||'b-neu'}" style="flex-shrink:0">${dl[e.dir]||'中性'}</span><span style="color:var(--muted2)">${e.title}</span></div>`).join('')}
+  </div>`
+}
 
-function renderHoldings(prices) {
-  document.getElementById('holdingCards').innerHTML = HOLDINGS.map((etf, idx) => {
-    const p = prices[etf.code]||FB[etf.code];
-    const cur=p.current, prev=p.prevClose;
-    const value=etf.shares*cur, cost=etf.shares*etf.costPrice;
-    const pnl=value-cost, pnlPct=pnl/cost;
-    const todayChg=(cur-prev)/prev, todayPnl=etf.shares*(cur-prev);
-    const sig = getSignal(pnlPct, etf);
-    const hist = (history[etf.code]||[]).map(h=>h.price||h);
-    if (!hist.length) hist.push(etf.costPrice, cur);
-    const spark = sparkline(hist, todayChg>=0);
-    const cc = todayChg>0?'up':todayChg<0?'down':'neu';
-    return `
-    <div class="etf-card">
-      <div class="sig-bar ${sig.css}"><div class="sig-label">${sig.label}</div><div class="sig-hint">${sig.hint}</div></div>
+let _calcAct=HOLDINGS.map(()=>'买入')
+function renderHoldings(){
+  document.getElementById('holdingCards').innerHTML=HOLDINGS.map((etf,i)=>{
+    const p=gp(etf.code),val=etf.shares*p.cur,cost=etf.shares*etf.cost
+    const pnl=val-cost,pct=pnl/cost,chg=(p.cur-p.prev)/p.prev,dayPnl=etf.shares*(p.cur-p.prev)
+    const s=sig(pct,etf),cls=chg>0?'up':chg<0?'down':''
+    const hist=(HISTORY[etf.code]||[]).map(h=>h.price||h)
+    if(hist.length<2)hist.push(etf.cost,p.cur)
+    return`<div class="etf-card fade-in" style="border-left:3px solid ${s.border}">
+      <div class="sig-bar" style="background:${s.bg}">
+        <div class="sig-lbl" style="color:${s.color}">${s.label}</div>
+        <div class="sig-hint" style="color:${s.color}99">${s.hint}</div>
+      </div>
       <div class="card-body">
-        <div class="name-row"><span class="etf-name">${etf.name}</span><span class="etf-meta">${etf.desc}</span></div>
-        <div class="price-row">
-          <div class="price-left">
-            <span class="price-main">¥${cur.toFixed(3)}</span>
-            <span class="pbadge ${cc}">${todayChg>0?'▲':todayChg<0?'▼':'—'} ${pct(Math.abs(todayChg))}</span>
-            <span class="today-pnl ${cc}">${money(todayPnl)} 今日</span>
-          </div>
-          ${spark}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div><div style="font-size:15px;font-weight:800">${etf.name}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${etf.desc}</div></div>
+          <span class="badge ${chg>0?'b-up':chg<0?'b-down':'b-neu'}">${chg>0?'▲':chg<0?'▼':'—'} ${fp(Math.abs(chg))} 今日</span>
         </div>
-        <div class="card-grid">
-          <div><div class="g-label">持有市值</div><div class="g-val">¥${Math.round(value).toLocaleString()}</div></div>
-          <div><div class="g-label">总浮盈</div><div class="g-val ${pnlPct>=0?'up':'down'}">${sign(pnlPct)}${pct(Math.abs(pnlPct))}</div></div>
-          <div><div class="g-label">成本 → 现价</div><div class="g-val">¥${etf.costPrice.toFixed(3)}→${cur.toFixed(3)}</div></div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between">
+          <div style="font-size:26px;font-weight:900">¥${p.cur.toFixed(3)}</div>
+          ${spark(hist,chg>=0)}
         </div>
       </div>
-      <button class="calc-toggle" onclick="toggleCalc('calc-${idx}')">🧮 分批操作计算器</button>
-      <div class="calc-panel" id="calc-${idx}">
-        <div class="calc-row">
-          <span class="calc-label">操作：</span>
-          <div class="calc-action" style="flex:1">
-            <button class="action-btn buy active" id="ca-buy-${idx}" onclick="setCalcAction(${idx},'买入')">买入</button>
-            <button class="action-btn sell" id="ca-sell-${idx}" onclick="setCalcAction(${idx},'卖出')">卖出</button>
-          </div>
-        </div>
-        <div class="calc-row">
-          <span class="calc-label">比例：</span>
-          <div class="pct-btns">
-            ${[5,10,15,20].map(n=>`<button class="pct-btn" onclick="calcResult(${idx},${n},this)">${n}%</button>`).join('')}
-          </div>
-        </div>
-        <div class="calc-result" id="cr-${idx}" style="color:var(--muted)">点击比例查看计算结果</div>
+      <div class="card-grid">
+        <div><div class="g-l">持有市值</div><div class="g-v">¥${Math.round(val).toLocaleString()}</div></div>
+        <div><div class="g-l">总浮盈</div><div class="g-v ${pct>=0?'up':'down'}">${pp(pct)}</div></div>
+        <div><div class="g-l">成本→现价</div><div class="g-v" style="color:var(--muted)">¥${etf.cost.toFixed(3)}→${p.cur.toFixed(3)}</div></div>
       </div>
-    </div>`;
-  }).join('');
-
-  // 存储计算器状态
-  window._calcAction = HOLDINGS.map(()=>'买入');
+      <button class="calc-toggle" onclick="document.getElementById('cp${i}').classList.toggle('open')">🧮 分批操作计算器 ▾</button>
+      <div class="calc-panel" id="cp${i}">
+        <div class="act-row">
+          <button class="act-btn buy on" id="ca-b-${i}" onclick="setCA(${i},'买入')">买入</button>
+          <button class="act-btn sell" id="ca-s-${i}" onclick="setCA(${i},'卖出')">卖出</button>
+        </div>
+        <div class="pct-row">${[5,10,15,20].map(n=>`<button class="pct-btn" onclick="calcR(${i},${n},this)">${n}%</button>`).join('')}</div>
+        <div class="calc-res" id="cr-${i}">点击比例查看计算结果</div>
+      </div>
+    </div>`
+  }).join('')
 }
 
-function toggleCalc(id) {
-  const el = document.getElementById(id);
-  el.classList.toggle('open');
+function setCA(i,act){
+  _calcAct[i]=act
+  document.getElementById(`ca-b-${i}`).className='act-btn buy'+(act==='买入'?' on':'')
+  document.getElementById(`ca-s-${i}`).className='act-btn sell'+(act==='卖出'?' on':'')
+  const a=document.querySelector(`#cp${i} .pct-btn.active`)
+  if(a)calcR(i,parseInt(a.textContent),a)
+}
+function calcR(i,n,btn){
+  const etf=HOLDINGS[i],act=_calcAct[i]
+  document.querySelectorAll(`#cp${i} .pct-btn`).forEach(b=>b.classList.remove('active'))
+  btn.classList.add('active')
+  const shares=Math.round(etf.shares*n/100/100)*100,p=gp(etf.code),amt=shares*p.cur
+  const c=act==='买入'?'var(--lime)':'var(--up)'
+  document.getElementById(`cr-${i}`).innerHTML=`<span style="color:${c};font-weight:700">${act} ${n}%</span> = <strong>${shares.toLocaleString()} 份</strong>，约 <strong>¥${Math.round(amt).toLocaleString()}</strong><br><span style="font-size:10px;color:var(--muted)">@ ¥${p.cur.toFixed(3)}</span>`
 }
 
-function setCalcAction(idx, action) {
-  window._calcAction[idx] = action;
-  document.getElementById(`ca-buy-${idx}`).className  = 'action-btn buy'  + (action==='买入'?' active':'');
-  document.getElementById(`ca-sell-${idx}`).className = 'action-btn sell' + (action==='卖出'?' active':'');
-  // 重新计算
-  const active = document.querySelector(`#calc-${idx} .pct-btn.active`);
-  if (active) calcResult(idx, parseInt(active.textContent), active);
+function renderWatchlist(){
+  document.getElementById('watchCards').innerHTML=WATCHLIST.map(w=>{
+    const p=gp(w.code),chg=(p.cur-p.prev)/p.prev,cls=chg>0?'up':chg<0?'down':''
+    return`<div class="watch-card">
+      <div><div style="font-size:14px;font-weight:700">${w.name}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${w.desc}</div></div>
+      <div style="text-align:right"><div style="font-size:17px;font-weight:800">¥${p.cur.toFixed(3)}</div><div class="${cls}" style="font-size:11px;font-weight:600;margin-top:2px">${chg>0?'▲':chg<0?'▼':'—'} ${fp(Math.abs(chg))} 今日</div></div>
+    </div>`
+  }).join('')
 }
 
-function calcResult(idx, n, btn) {
-  const etf = HOLDINGS[idx];
-  const action = (window._calcAction||[])[idx] || '买入';
-  // 高亮按钮
-  document.querySelectorAll(`#calc-${idx} .pct-btn`).forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+// ═══════════════════════════════ EVENTS ═══════════════════════════════
+let _evDir='bull',evFilter='all'
+const DL={bull:'📈 利多',bear:'📉 利空',neu:'➡ 中性'}
+const DC={bull:'b-up',bear:'b-down',neu:'b-neu'}
+const PL={unpriced:'未定价·机会',partial:'部分定价',priced:'已定价'}
+const PC={unpriced:'b-lime',partial:'b-yellow',priced:'b-neu'}
 
-  const shares = Math.round(etf.shares * n / 100 / 100) * 100; // 取整到100份
-  // 获取最新价（从渲染时存的值）
-  const priceEl = document.querySelector(`#holdingCards .etf-card:nth-child(${idx+1}) .price-main`);
-  const price = priceEl ? parseFloat(priceEl.textContent.replace('¥','')) : etf.costPrice;
-  const amount = shares * price;
+function getEvents(){return JSON.parse(localStorage.getItem('etf_events')||'[]')}
+function setEvents(a){localStorage.setItem('etf_events',JSON.stringify(a))}
 
-  const color = action==='买入' ? 'var(--lime)' : 'var(--up)';
-  document.getElementById(`cr-${idx}`).innerHTML = `
-    <span style="color:${color};font-weight:700">${action} ${n}%</span> =
-    <strong>${shares.toLocaleString()} 份</strong>，约 <strong>¥${Math.round(amount).toLocaleString()}</strong>
-    <br><span style="color:var(--muted);font-size:11px">单价 ¥${price.toFixed(3)} · 剩余持有 ${(etf.shares - (action==='卖出'?shares:0)).toLocaleString()} 份</span>`;
+function saveEvent(){
+  const title=document.getElementById('evTitle').value.trim()
+  if(!title){alert('请填写标题');return}
+  const evs=getEvents()
+  evs.unshift({id:Date.now(),title,dir:_evDir,
+    etfs:document.getElementById('evEtf').value.split(',').map(s=>s.trim()).filter(Boolean),
+    body:document.getElementById('evBody').value.trim(),
+    src:document.getElementById('evSrc').value.trim(),
+    pricing:document.getElementById('evPricing').value,
+    date:new Date().toISOString().slice(0,10),
+    time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+  })
+  setEvents(evs);closeModal('maskEvent')
+  ;['evTitle','evBody','evSrc'].forEach(id=>document.getElementById(id).value='')
+  renderEvents();renderTodayEventsHint()
+}
+function markPriced(id){setEvents(getEvents().map(e=>e.id===id?{...e,pricing:'priced'}:e));renderEvents()}
+function delEvent(id){if(!confirm('删除？'))return;setEvents(getEvents().filter(e=>e.id!==id));renderEvents();renderTodayEventsHint()}
+
+function filterEvents(f,btn){
+  evFilter=f
+  document.querySelectorAll('#view-events .ftab').forEach(b=>b.classList.remove('active'))
+  btn.classList.add('active')
+  renderEvents()
+}
+function renderEvents(){
+  let evs=getEvents()
+  if(evFilter==='unpriced')evs=evs.filter(e=>e.pricing==='unpriced')
+  else if(evFilter!=='all')evs=evs.filter(e=>e.dir===evFilter)
+  const el=document.getElementById('evList')
+  if(!evs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📰</div><div class="empty-text">还没有事件记录<br>把影响市场的重要事件记在这里<br>帮你判断持仓要不要动</div></div>`;return}
+  el.innerHTML=evs.map(e=>`<div class="ev-card fade-in">
+    <div class="ev-top">
+      <div class="ev-badges">
+        <span class="badge ${DC[e.dir]||'b-neu'}">${DL[e.dir]||'中性'}</span>
+        <span class="badge ${PC[e.pricing]||'b-neu'}">${PL[e.pricing]||''}</span>
+        ${e.etfs.length?e.etfs.map(c=>`<span class="badge b-purple">${c}</span>`).join(''):'<span class="badge b-neu">全市场</span>'}
+      </div>
+      <div class="ev-title">${e.title}</div>
+      ${e.body?`<div class="ev-body">${e.body}</div>`:''}
+    </div>
+    <div class="ev-foot">
+      <div class="ev-meta">${e.src||'无来源'} · ${e.date} ${e.time}</div>
+      <div class="ev-actions">
+        ${e.pricing!=='priced'?`<button class="ev-btn" style="color:var(--yellow);border-color:rgba(245,158,11,.3)" onclick="markPriced(${e.id})">标记已定价</button>`:''}
+        <button class="ev-btn" style="color:var(--up);border-color:rgba(248,113,113,.2)" onclick="delEvent(${e.id})">删除</button>
+      </div>
+    </div>
+  </div>`).join('')
 }
 
-// ══════════════════════════════════════
-// 渲染观察列表
-// ══════════════════════════════════════
-function renderWatchlist(prices) {
-  document.getElementById('watchCards').innerHTML = WATCHLIST.map(w => {
-    const p = prices[w.code]||FB[w.code];
-    if (!p) return '';
-    const chg=(p.current-p.prevClose)/p.prevClose;
-    const cls=chg>0?'up':chg<0?'down':'neu';
-    return `<div class="watch-card">
-      <div><div class="watch-name">${w.name}</div><div class="watch-desc">${w.desc}</div></div>
-      <div><div class="watch-price">¥${p.current.toFixed(3)}</div><div class="watch-chg ${cls}">${chg>0?'▲':chg<0?'▼':'—'} ${pct(Math.abs(chg))} 今日</div></div>
-    </div>`;
-  }).join('');
+// ═══════════════════════════════ NOTES ═══════════════════════════════
+let _noteType='analysis',noteFilter='all'
+const NT={analysis:{label:'🔬 分析',cls:'b-blue'},news:{label:'📰 新闻',cls:'b-neu'},idea:{label:'💡 想法',cls:'b-yellow'}}
+
+function getNotes(){return JSON.parse(localStorage.getItem('etf_notes')||'[]')}
+function setNotes(a){localStorage.setItem('etf_notes',JSON.stringify(a))}
+
+function saveNote(){
+  const title=document.getElementById('noteTitle').value.trim()
+  const body=document.getElementById('noteBody').value.trim()
+  if(!title||!body){alert('请填写标题和内容');return}
+  const notes=getNotes()
+  notes.unshift({id:Date.now(),title,type:_noteType,
+    etfs:document.getElementById('noteEtf').value.split(',').map(s=>s.trim()).filter(Boolean),
+    body,date:new Date().toISOString().slice(0,10),
+    time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+  })
+  setNotes(notes);closeModal('maskNote')
+  ;['noteTitle','noteBody','noteEtf'].forEach(id=>document.getElementById(id).value='')
+  renderNotes()
+}
+function delNote(id){setNotes(getNotes().filter(n=>n.id!==id));renderNotes()}
+
+function filterNotes(f,btn){
+  noteFilter=f
+  document.querySelectorAll('#view-research .ftab').forEach(b=>b.classList.remove('active'))
+  btn.classList.add('active')
+  renderNotes()
+}
+function renderNotes(){
+  let notes=getNotes()
+  if(noteFilter==='analysis'||noteFilter==='idea'||noteFilter==='news')notes=notes.filter(n=>n.type===noteFilter)
+  else if(noteFilter!=='all')notes=notes.filter(n=>n.etfs.includes(noteFilter))
+  const el=document.getElementById('noteList')
+  if(!notes.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">还没有研究笔记<br>把你看到的新闻、自己的分析<br>或者一个灵感记在这里</div></div>`;return}
+  el.innerHTML=notes.map(n=>{
+    const t=NT[n.type]||NT.idea
+    return`<div class="note-card fade-in">
+      <div class="note-tags">
+        <span class="badge ${t.cls}">${t.label}</span>
+        ${n.etfs.map(c=>`<span class="badge b-purple">${c}</span>`).join('')}
+      </div>
+      <div class="note-title">${n.title}</div>
+      <div class="note-body">${n.body}</div>
+      <div class="note-foot">
+        <span style="font-size:10px;color:var(--muted)">${n.date} ${n.time}</span>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px" onclick="delNote(${n.id})">🗑</button>
+      </div>
+    </div>`
+  }).join('')
 }
 
-// ══════════════════════════════════════
-// 操作记录（存 localStorage）
-// ══════════════════════════════════════
-let logAction = '买入';
+// ═══════════════════════════════ LEADS ═══════════════════════════════
+let _leadRisk='mid'
+const RL={low:{label:'🟢 低风险',cls:'b-down'},mid:{label:'🟡 中风险',cls:'b-yellow'},high:{label:'🔴 高风险',cls:'b-up'}}
 
-function selectLogAction(a) {
-  logAction = a;
-  document.getElementById('logActBuy').className  = 'form-action-btn buy'  + (a==='买入'?' sel':'');
-  document.getElementById('logActSell').className = 'form-action-btn sell' + (a==='卖出'?' sel':'');
+function getLeads(){return JSON.parse(localStorage.getItem('etf_leads')||'[]')}
+function setLeads(a){localStorage.setItem('etf_leads',JSON.stringify(a))}
+
+function saveLead(){
+  const code=document.getElementById('leadCode').value.trim()
+  const name=document.getElementById('leadName').value.trim()
+  const thesis=document.getElementById('leadThesis').value.trim()
+  if(!code||!name||!thesis){alert('请填写代码、名称和买入逻辑');return}
+  const leads=getLeads()
+  leads.unshift({id:Date.now(),code,name,risk:_leadRisk,thesis,
+    target:parseFloat(document.getElementById('leadTarget').value)||null,
+    market:document.getElementById('leadMarket').value,
+    date:new Date().toISOString().slice(0,10),
+  })
+  setLeads(leads);closeModal('maskLead')
+  ;['leadCode','leadName','leadThesis','leadTarget'].forEach(id=>document.getElementById(id).value='')
+  renderLeads()
 }
-selectLogAction('买入'); // 默认选中买入
+function delLead(id){if(!confirm('删除？'))return;setLeads(getLeads().filter(l=>l.id!==id));renderLeads()}
+function moveToBuy(id){alert('已记录！下次更新持仓时把这只加进去。');delLead(id)}
 
-function openLog() {
-  document.getElementById('logMask').classList.add('open');
-  renderLogList();
+function renderLeads(){
+  const leads=getLeads()
+  const el=document.getElementById('leadList')
+  if(!leads.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">还没有 ETF 线索<br>感兴趣但还没买的放这里<br>记下为什么想买，等价格合适再动</div></div>`;return}
+  el.innerHTML=leads.map(l=>{
+    const r=RL[l.risk]||RL.mid
+    const pfx=l.market==='A'?(l.code.startsWith('6')||l.code.startsWith('5')?'sh':'sz'):'';
+    const key=l.market==='A'?pfx+l.code:l.code
+    const p=gp(key),hasP=PRICES[key]!=null
+    const gap=l.target&&hasP?((p.cur-l.target)/l.target*100).toFixed(1):null
+    return`<div class="lead-card fade-in">
+      <div class="lead-top">
+        <div class="lead-hd">
+          <div><div class="lead-name">${l.name}</div><div class="lead-code">${l.code} · ${l.market}股</div></div>
+          <span class="badge ${r.cls}">${r.label}</span>
+        </div>
+        <div class="lead-thesis">${l.thesis}</div>
+        <div class="lead-prices">
+          ${hasP?`<div><div class="lp-l">现价</div><div class="lp-v">¥${p.cur.toFixed(3)}</div></div>`:''}
+          ${l.target?`<div><div class="lp-l">目标买入价</div><div class="lp-v ${p.cur<=l.target?'lime':''}">¥${l.target.toFixed(3)}</div></div>`:''}
+          ${gap!==null?`<div><div class="lp-l">与目标价差</div><div class="lp-v" style="font-size:12px">${p.cur<=l.target?'📍 已到目标价！':(gap>0?'+':'')+gap+'%'}</div></div>`:''}
+        </div>
+      </div>
+      <div class="lead-foot">
+        <span style="font-size:10px;color:var(--muted)">添加于 ${l.date}</span>
+        <div style="display:flex;gap:6px">
+          <button style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid rgba(132,204,22,.3);background:none;color:var(--lime);cursor:pointer;font-weight:600" onclick="moveToBuy(${l.id})">✓ 已买入</button>
+          <button style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer" onclick="delLead(${l.id})">删除</button>
+        </div>
+      </div>
+    </div>`
+  }).join('')
 }
-function closeLog() { document.getElementById('logMask').classList.remove('open'); }
-function closeMask(e) { if(e.target===document.getElementById('logMask')) closeLog(); }
 
-function getLogs() { return JSON.parse(localStorage.getItem('etf_logs')||'[]'); }
-function saveLogs(arr) { localStorage.setItem('etf_logs', JSON.stringify(arr)); }
+// ═══════════════════════════════ OP LOG ═══════════════════════════════
+let _logAct='buy'
+function getLogs(){return JSON.parse(localStorage.getItem('etf_logs')||'[]')}
+function setLogs(a){localStorage.setItem('etf_logs',JSON.stringify(a))}
 
-function saveLog() {
-  const etfRaw = document.getElementById('logEtf').value.split('|');
-  const price  = parseFloat(document.getElementById('logPrice').value);
-  const shares = parseInt(document.getElementById('logShares').value);
-  const note   = document.getElementById('logNote').value.trim();
-  if (!price || !shares) { alert('请填写价格和份数'); return; }
+function saveLog(){
+  const raw=document.getElementById('logEtf').value.split('|')
+  const price=parseFloat(document.getElementById('logPrice').value)
+  const shares=parseInt(document.getElementById('logShares').value)
+  if(!price||!shares){alert('请填写价格和份数');return}
+  const etf=HOLDINGS.find(h=>h.code===raw[0])
+  let slabel='—'
+  if(etf){const p=gp(etf.code);slabel=sig((p.cur-etf.cost)/etf.cost,etf).label}
+  const logs=getLogs()
+  logs.unshift({id:Date.now(),date:new Date().toLocaleDateString('zh-CN'),
+    time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+    etfCode:raw[0],etfName:raw[1],action:_logAct==='buy'?'买入':'卖出',price,shares,
+    amount:Math.round(price*shares),signal:slabel,note:document.getElementById('logNote').value.trim(),
+  })
+  setLogs(logs)
+  ;['logPrice','logShares','logNote'].forEach(id=>document.getElementById(id).value='')
+  renderLogList()
+}
+function delLog(id){setLogs(getLogs().filter(l=>l.id!==id));renderLogList()}
+function renderLogList(){
+  const logs=getLogs(),el=document.getElementById('logList')
+  if(!logs.length){el.innerHTML='<div class="log-empty">还没有操作记录</div>';return}
+  el.innerHTML=logs.map(l=>{
+    const cls=l.action==='买入'?'down':'up'
+    return`<div class="log-item">
+      <div>
+        <div style="font-size:12px;font-weight:600"><span class="${cls}">${l.action}</span> ${l.etfName} · ${l.shares.toLocaleString()}份 @ ¥${l.price}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${l.date} ${l.time}${l.note?' · '+l.note:''}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">当时建议：${l.signal}</div>
+      </div>
+      <div style="text-align:right;display:flex;align-items:center;gap:6px">
+        <div class="${cls}" style="font-size:13px;font-weight:700">¥${l.amount.toLocaleString()}</div>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer" onclick="delLog(${l.id})">🗑</button>
+      </div>
+    </div>`
+  }).join('')
+}
 
-  // 获取当前信号
-  const etf = HOLDINGS.find(h=>h.code===etfRaw[0]);
-  let sigLabel = '—';
-  if (etf) {
-    const cost=etf.shares*etf.costPrice, value=etf.shares*price;
-    sigLabel = getSignal((value-cost)/cost, etf).label;
+// ═══════════════════════════════ MODAL ═══════════════════════════════
+function openModal(type){
+  const ids={event:'maskEvent',note:'maskNote',lead:'maskLead',log:'maskLog'}
+  document.getElementById(ids[type]).classList.add('open')
+  if(type==='log')renderLogList()
+}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function closeMask(e,id){if(e.target===document.getElementById(id))closeModal(id)}
+
+// ═══════════════════════════════ SEL FACTION ═══════════════════════════════
+function sel(ctx,val){
+  if(ctx==='ev'){
+    _evDir=val
+    ;['bull','bear','neu'].forEach(v=>{const el=document.getElementById(`fb-${v}`);el.className=`faction-btn ${v}`+(v===val?' on':'')})
+  }else if(ctx==='note'){
+    _noteType=val
+    ;['analysis','news','idea'].forEach(v=>{const el=document.getElementById(`nt-${v}`);el.className=`faction-btn ${v}`+(v===val?' on':'')})
+  }else if(ctx==='lead'){
+    _leadRisk=val
+    ;['low','mid','high'].forEach(v=>{const el=document.getElementById(`lr-${v}`);el.className=`faction-btn ${v}`+(v===val?' on':'')})
+  }else if(ctx==='log'){
+    _logAct=val
+    ;['buy','sell'].forEach(v=>{const el=document.getElementById(`la-${v}`);el.className=`faction-btn ${v}`+(v===val?' on':'')})
   }
-
-  const logs = getLogs();
-  logs.unshift({
-    id: Date.now(),
-    date: new Date().toLocaleDateString('zh-CN'),
-    time: new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
-    etfCode: etfRaw[0], etfName: etfRaw[1],
-    action: logAction, price, shares,
-    amount: Math.round(price*shares),
-    signal: sigLabel, note,
-  });
-  saveLogs(logs);
-
-  // 清空表单
-  document.getElementById('logPrice').value='';
-  document.getElementById('logShares').value='';
-  document.getElementById('logNote').value='';
-  renderLogList();
 }
 
-function deleteLog(id) {
-  saveLogs(getLogs().filter(l=>l.id!==id));
-  renderLogList();
+// ═══════════════════════════════ UTILS ═══════════════════════════════
+const fp=n=>(n*100).toFixed(2)+'%'
+const pp=n=>(n>=0?'+':'')+fp(n)
+const mn=n=>(n>=0?'+¥':'-¥')+Math.abs(Math.round(n)).toLocaleString()
+
+function isOpen(){
+  const d=new Date().getDay();if(d===0||d===6)return false
+  const t=new Date().getHours()*100+new Date().getMinutes()
+  return(t>=930&&t<1130)||(t>=1300&&t<1500)
 }
 
-function renderLogList() {
-  const logs = getLogs();
-  const el = document.getElementById('logList');
-  if (!logs.length) { el.innerHTML='<div class="log-empty">还没有操作记录<br>买卖后在这里记一笔，方便复盘</div>'; return; }
-  el.innerHTML = logs.map(l => {
-    const cls = l.action==='买入' ? 'down' : 'up'; // 买入花钱→绿，卖出回款→红
-    return `<div class="log-item">
-      <div class="log-left">
-        <div class="log-top"><span class="${cls}" style="font-weight:700">${l.action}</span> ${l.etfName} · ${l.shares.toLocaleString()}份 @ ¥${l.price}</div>
-        <div class="log-bot">${l.date} ${l.time}${l.note?' · '+l.note:''}</div>
-        <div class="log-signal">当时系统建议：${l.signal}</div>
-      </div>
-      <div class="log-right">
-        <div class="log-amount ${cls}">¥${l.amount.toLocaleString()}</div>
-        <button class="log-del" onclick="deleteLog(${l.id})">🗑</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ══════════════════════════════════════
-// 工具函数
-// ══════════════════════════════════════
-function isOpen() {
-  const now=new Date(),d=now.getDay();
-  if(d===0||d===6) return false;
-  const t=now.getHours()*100+now.getMinutes();
-  return (t>=930&&t<1130)||(t>=1300&&t<1500);
-}
-const pct   = n => (n*100).toFixed(2)+'%';
-const money = n => (n>=0?'+¥':'-¥')+Math.abs(n).toFixed(0);
-const sign  = n => n>=0?'+':'-';
-
-setInterval(()=>{ if(isOpen()) loadAll(); }, 30000);
-loadAll();
+setInterval(()=>{if(isOpen())loadAll()},30000)
+loadAll()
 </script>
 </body>
 </html>
