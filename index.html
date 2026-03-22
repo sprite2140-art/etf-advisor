@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#080e1a"/>
 <title>ETF 决策助手</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -188,6 +191,109 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,'PingFang 
 
 .fade-in{animation:fi .2s ease}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ══ MOBILE ADAPTATIONS ══════════════════════════════════ */
+
+/* Safe area — iPhone home indicator & notch */
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --nav-h: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+.bottom-nav{
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: var(--nav-h);
+}
+.topbar{
+  padding-top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
+}
+.fab{
+  bottom: calc(var(--nav-h) + 14px);
+}
+#main{
+  padding-bottom: calc(var(--nav-h) + 8px);
+  -webkit-overflow-scrolling: touch;
+}
+.modal{
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+}
+
+/* Prevent iOS input zoom (must be ≥16px) */
+.form-input,
+.form-select,
+.form-textarea{
+  font-size: 16px;
+}
+
+/* Filter tabs — horizontal scroll, no wrap */
+.filter-row{
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 6px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.filter-row::-webkit-scrollbar{ display: none; }
+.ftab{ flex-shrink: 0; }
+
+/* Touch targets — min 44×44px */
+.nav-item{ min-height: 44px; }
+.add-btn{ min-height: 36px; padding: 6px 14px; }
+.icon-btn{ min-height: 36px; }
+.calc-toggle{ min-height: 40px; }
+.rule-toggle{ min-height: 44px; }
+.submit-btn{ min-height: 50px; padding: 14px; }
+.faction-btn{ min-height: 44px; }
+.pct-btn{ min-height: 38px; min-width: 52px; }
+
+/* Index bar — abbreviate long numbers via clamp */
+.idx-val{ font-size: clamp(10px, 3vw, 13px); }
+.idx-chg{ font-size: clamp(9px, 2.5vw, 10px); }
+.idx-name{ font-size: clamp(8px, 2vw, 9px); }
+.idx{ padding: 9px 4px; }
+
+/* Narrow screen adjustments (< 390px) */
+@media (max-width: 390px){
+  .view{ padding: 10px 12px; }
+  .topbar{ padding-left: 14px; padding-right: 14px; }
+  .summary{ padding: 14px 13px; }
+  .card-body{ padding: 12px; }
+  .card-grid{ padding: 9px 12px; gap: 6px; }
+  .g-l{ font-size: 9px; }
+  .g-v{ font-size: 12px; }
+  .sig-bar{ padding: 9px 12px; }
+  .sig-lbl{ font-size: 15px; }
+  .sig-hint{ font-size: 10px; max-width: 55%; }
+  .sum-main{ font-size: 26px; }
+  .alloc-leg{ gap: 6px; }
+  .leg{ font-size: 9px; }
+}
+
+/* Very narrow (< 360px) — stack form 2col */
+@media (max-width: 360px){
+  .form-2col{ grid-template-columns: 1fr; }
+}
+
+/* Landscape orientation */
+@media (orientation: landscape) and (max-height: 500px){
+  :root{ --nav-h: 48px; }
+  .nav-item .ni{ font-size: 16px; }
+  .nav-item{ font-size: 9px; }
+  .topbar{ padding-top: 8px; padding-bottom: 6px; }
+  .summary{ padding: 12px; }
+  .sum-main{ font-size: 24px; }
+}
+
+/* Smooth tap feedback */
+button,a{ -webkit-tap-highlight-color: rgba(59,130,246,0.15); }
+
+/* Modal keyboard handling */
+.modal-mask.open{ align-items: flex-end; }
+@supports (height: 100dvh){
+  .modal{ max-height: calc(90dvh - env(safe-area-inset-bottom, 0px)); }
+}
 </style>
 </head>
 <body>
@@ -457,11 +563,16 @@ function spark(pts,up){
 // ═══════════════════════════════ RENDER ═══════════════════════════════
 function renderAll(){renderIndices();renderSummary();renderHoldings();renderWatchlist();renderTodayEventsHint()}
 
+function fmtIdx(v){
+  if(v>=10000) return (v/10000).toFixed(2)+'万'
+  if(v>=1000)  return v.toFixed(1)
+  return v.toFixed(3)
+}
 function renderIndices(){
   document.getElementById('indexBar').innerHTML=INDICES.map(idx=>{
     const p=gp(idx.code),chg=(p.cur-p.prev)/p.prev
     const cls=chg>0?'up':chg<0?'down':'',arr=chg>0?'▲':chg<0?'▼':'—'
-    return`<div class="idx"><div class="idx-name">${idx.name}</div><div class="idx-val ${cls}">${p.cur>=100?p.cur.toFixed(2):p.cur.toFixed(3)}</div><div class="idx-chg ${cls}">${arr} ${fp(Math.abs(chg))}</div></div>`
+    return`<div class="idx"><div class="idx-name">${idx.name}</div><div class="idx-val ${cls}">${fmtIdx(p.cur)}</div><div class="idx-chg ${cls}">${arr} ${fp(Math.abs(chg))}</div></div>`
   }).join('')
 }
 
