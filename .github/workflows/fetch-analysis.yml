@@ -1,0 +1,37 @@
+name: Fetch News & AI Analysis
+
+on:
+  schedule:
+    - cron: '30 1 * * 1-5'   # 09:30 CST (开盘)
+    - cron: '30 7 * * 1-5'   # 15:30 CST (收盘后)
+  workflow_dispatch:           # 手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run analysis
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python scripts/analyze.py
+
+      - name: Commit results
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add analysis.json
+          git diff --staged --quiet || git commit -m "🤖 AI分析 $(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M CST')"
+          git push

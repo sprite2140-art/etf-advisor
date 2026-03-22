@@ -351,6 +351,7 @@ button,a{ -webkit-tap-highlight-color: rgba(59,130,246,0.15); }
         <button class="ftab" onclick="filterEvents('neu',this)">➡ 中性</button>
         <button class="ftab" onclick="filterEvents('unpriced',this)">未定价机会</button>
       </div>
+      <div id="autoEventsBar"></div>
       <div id="evList"></div>
     </div>
   </div>
@@ -359,6 +360,7 @@ button,a{ -webkit-tap-highlight-color: rgba(59,130,246,0.15); }
   <div class="view" id="view-research">
     <div style="margin-top:12px">
       <div class="sec-hd"><h2>研究笔记</h2><button class="add-btn" onclick="openModal('note')">+ 新增</button></div>
+      <div id="aiAnalysis"></div>
       <div class="filter-row">
         <button class="ftab active" onclick="filterNotes('all',this)">全部</button>
         <button class="ftab" onclick="filterNotes('159869',this)">游戏ETF</button>
@@ -508,7 +510,7 @@ const FB={
   'sh000001':{current:3350,prevClose:3320},'sz399001':{current:10200,prevClose:10150},
   'sz399006':{current:2080,prevClose:2060},
 }
-let PRICES={},HISTORY={}
+let PRICES={},HISTORY={},ANALYSIS=null
 
 // ═══════════════════════════════ NAV ═══════════════════════════════
 function switchView(id,btn){
@@ -517,8 +519,8 @@ function switchView(id,btn){
   document.getElementById('view-'+id).classList.add('active')
   btn.classList.add('active')
   document.getElementById('main').scrollTop=0
-  if(id==='events')renderEvents()
-  if(id==='research')renderNotes()
+  if(id==='events'){renderAutoEvents();renderEvents()}
+  if(id==='research'){renderAIAnalysis();renderNotes()}
   if(id==='leads')renderLeads()
 }
 
@@ -526,15 +528,19 @@ function switchView(id,btn){
 async function loadAll(){
   document.getElementById('updateTime').textContent='获取中...'
   try{
-    const[pd,hd]=await Promise.all([
+    const[pd,hd,ad]=await Promise.all([
       fetch('prices.json?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
       fetch('prices-history.json?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('analysis.json?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
     ])
     if(pd?.success&&pd.data)PRICES=pd.data
     if(hd)HISTORY=hd
+    if(ad)ANALYSIS=ad
     document.getElementById('updateTime').textContent='更新于 '+(pd?.updatedAt||new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}))
   }catch{document.getElementById('updateTime').textContent='演示数据'}
   renderAll()
+  renderAutoEvents()
+  renderAIAnalysis()
 }
 function gp(code){const p=PRICES[code]||FB[code]||{};return{cur:p.current??p.cur??1,prev:p.prevClose??p.prev??1}}
 
@@ -737,6 +743,56 @@ function renderEvents(){
       </div>
     </div>
   </div>`).join('')
+}
+
+// ═══════════════════════════════ AI ANALYSIS ═══════════════════════════════
+function renderAutoEvents(){
+  const el=document.getElementById('autoEventsBar')
+  if(!el)return
+  const evs=ANALYSIS?.auto_events
+  if(!evs?.length){el.innerHTML='';return}
+  const DC={bull:'b-up',bear:'b-down',neu:'b-neu'},DL={bull:'📈 利多',bear:'📉 利空',neu:'➡ 中性'}
+  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:12px;padding:11px 14px;margin-bottom:12px" class="fade-in">
+    <div style="font-size:10px;color:var(--yellow);font-weight:700;margin-bottom:8px">⚡ 今日价格预警 · 自动生成</div>
+    ${evs.map(e=>`<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px">
+      <span class="badge ${DC[e.dir]||'b-neu'}" style="flex-shrink:0">${DL[e.dir]||'中性'}</span>
+      <span style="font-size:12px;color:var(--muted2);line-height:1.5">${e.title}</span>
+    </div>`).join('')}
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">更新于 ${ANALYSIS.generated_at} · 涨跌≥2%自动触发</div>
+  </div>`
+}
+
+function renderAIAnalysis(){
+  const el=document.getElementById('aiAnalysis')
+  if(!el)return
+  if(!ANALYSIS?.ai_analysis){
+    el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:8px">🤖 AI 今日分析</div>
+      <div style="font-size:12px;color:var(--muted)">分析数据加载中…首次需等到交易日 9:30 或 15:30 后自动生成。</div>
+    </div>`
+    return
+  }
+  const lines=ANALYSIS.ai_analysis.split('\n').filter(l=>l.trim())
+  const hasNews=ANALYSIS.holdings?.some(h=>h.news?.length>0)
+  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:14px;margin-bottom:14px" class="fade-in">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--blue);font-weight:700">🤖 AI 今日分析</div>
+      <div style="font-size:10px;color:var(--muted)">${ANALYSIS.generated_at}</div>
+    </div>
+    ${lines.map(l=>`<div style="font-size:13px;color:var(--muted2);line-height:1.75;margin-bottom:3px">${l}</div>`).join('')}
+    ${hasNews?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:8px">📰 相关新闻</div>
+      ${(ANALYSIS.holdings||[]).map(h=>{
+        const col=HOLDINGS.find(x=>x.code===h.code)?.color||'var(--muted2)'
+        const news=(h.news||[]).slice(0,2)
+        if(!news.length)return''
+        return`<div style="margin-bottom:10px">
+          <div style="font-size:10px;color:${col};font-weight:700;margin-bottom:4px">${h.name}</div>
+          ${news.map(n=>`<div style="font-size:11px;color:var(--muted);line-height:1.55;padding-left:8px;border-left:2px solid var(--border);margin-bottom:4px">${n.title}</div>`).join('')}
+        </div>`
+      }).join('')}
+    </div>`:''}
+  </div>`
 }
 
 // ═══════════════════════════════ NOTES ═══════════════════════════════
