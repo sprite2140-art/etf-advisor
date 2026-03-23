@@ -93,13 +93,15 @@ for h in HOLDINGS:
             'auto':       True,
         })
 
-    pnl_pct = ((price_info['price'] - h['cost']) / h['cost'] * 100) if price_info else None
+    pnl_pct   = ((price_info['price'] - h['cost']) / h['cost'] * 100) if price_info else None
+    chg_str   = (f"{price_info['change_pct']:+.2f}%") if price_info else '无数据'
+    pnl_str   = (f"{pnl_pct:+.2f}%") if pnl_pct is not None else '未知'
     news_text = '\n'.join([f'  · {n["title"]}' for n in news]) if news else '  暂无相关新闻'
 
     prompt_parts.append(
         f'【{h["name"]}（{code_num}）】\n'
-        f'  今日涨跌：{f"{price_info["change_pct"]:+.2f}%" if price_info else "无数据"}\n'
-        f'  浮盈亏：{f"{pnl_pct:+.2f}%" if pnl_pct is not None else "未知"}\n'
+        f'  今日涨跌：{chg_str}\n'
+        f'  浮盈亏：{pnl_str}\n'
         f'  相关新闻：\n{news_text}'
     )
 
