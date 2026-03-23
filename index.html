@@ -501,12 +501,18 @@ const INDICES=[
   {code:'sh000001',name:'上证'},{code:'sz399001',name:'深成'},
   {code:'sz399006',name:'创业板'},{code:'sh513100',name:'纳指'},
 ]
+// FB = 最后已知收盘价备份，仅在 prices.json 加载失败时使用（会显示红色警告）
+// 最后同步日期：2026-03-20 收盘，指数设为 0（不误导用户）
 const FB={
-  'sz159869':{current:1.320,prevClose:1.344},'sz161125':{current:2.829,prevClose:2.833},
-  'sz159583':{current:1.386,prevClose:1.357},'sh510300':{current:4.10,prevClose:4.09},
-  'sh588000':{current:1.05,prevClose:1.04},'sh513100':{current:2.80,prevClose:2.82},
-  'sh000001':{current:3350,prevClose:3320},'sz399001':{current:10200,prevClose:10150},
-  'sz399006':{current:2080,prevClose:2060},
+  'sz159869':{current:1.304,prevClose:1.344},
+  'sz161125':{current:2.827,prevClose:2.833},
+  'sz159583':{current:1.369,prevClose:1.357},
+  'sh510300':{current:4.576,prevClose:4.599},
+  'sh588000':{current:1.388,prevClose:1.411},
+  'sh513100':{current:1.749,prevClose:1.764},
+  'sh000001':{current:0,prevClose:0},
+  'sz399001':{current:0,prevClose:0},
+  'sz399006':{current:0,prevClose:0},
 }
 let PRICES={},HISTORY={},ANALYSIS=null,_dataFresh=false
 
@@ -536,8 +542,9 @@ async function loadAll(){
     if(hd)HISTORY=hd
     if(ad)ANALYSIS=ad
     const ms=marketStatus()
-    const timeStr=pd?.updatedAt||bjNow().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})
-    document.getElementById('updateTime').textContent=(_dataFresh?'更新于 '+timeStr:'演示数据·非实时')+' · '+ms.text
+    const rawTime=pd?.updatedAt||''
+    const timeLabel=rawTime?formatDataTime(rawTime):'未知时间'
+    document.getElementById('updateTime').textContent=(_dataFresh?timeLabel:'上次已知价格·'+timeLabel)+' · '+ms.text
   }catch{
     _dataFresh=false
     document.getElementById('updateTime').textContent='数据获取失败 · '+marketStatus().text
@@ -555,13 +562,35 @@ function renderDataWarning(){
     ⚠️ <strong>无法获取实时数据</strong> — 以下数字为演示数据，不代表真实行情，请勿用于实际买卖决策。
   </div>`
 }
+function formatDataTime(str){
+  if(!str)return''
+  try{
+    const bj=bjNow()
+    const todayStr=bj.toISOString().slice(0,10)
+    const dataDateStr=str.slice(0,10)
+    const timeStr=str.slice(11,16)
+    if(dataDateStr===todayStr)return`今日 ${timeStr} 更新`
+    const dataDate=new Date(dataDateStr+'T12:00:00+08:00')
+    const diffDays=Math.round((bj-dataDate)/86400000)
+    const w=['日','一','二','三','四','五','六']
+    if(diffDays===1)return`昨日收盘 ${timeStr}`
+    return`周${w[dataDate.getDay()]}收盘 ${timeStr}（${diffDays}天前）`
+  }catch{return str.slice(0,16)}
+}
 function gp(code){
-  if(PRICES[code]){const p=PRICES[code];return{cur:p.current??p.cur??0,prev:p.prevClose??p.prev??0,fresh:true}}
-  const p=FB[code]||{};return{cur:p.current??p.cur??0,prev:p.prevClose??p.prev??0,fresh:false}
+  if(PRICES[code]){
+    const p=PRICES[code]
+    const cur=+(p.current||0),prev=+(p.prevClose||0)
+    return{cur,prev:prev||cur,fresh:true}   // prev 兜底用 cur
+  }
+  const p=FB[code]||{}
+  const cur=+(p.current||0),prev=+(p.prevClose||0)
+  return{cur,prev:prev||cur,fresh:false}
 }
 
 // ═══════════════════════════════ SIGNAL ═══════════════════════════════
 function sig(pnl,etf,shares,curPrice){
+  if(!curPrice)return{label:'价格获取中',hint:'数据更新后自动显示建议',color:'var(--muted)',border:'var(--border)',bg:'rgba(90,116,144,.07)'}
   const s15=Math.round(shares*.15/100)*100,s10=Math.round(shares*.10/100)*100
   const a15=Math.round(s15*curPrice),a10=Math.round(s10*curPrice)
   if(pnl>=etf.stopAt+.05)return{label:'建议卖出一部分',hint:`已赚 ${fp(pnl)}，可先卖约 <b>${s15.toLocaleString()} 份</b>（约 ¥${a15.toLocaleString()}）`,color:'#f87171',border:'#ef4444',bg:'rgba(239,68,68,.07)'}
@@ -594,7 +623,9 @@ function fmtIdx(v){
 }
 function renderIndices(){
   document.getElementById('indexBar').innerHTML=INDICES.map(idx=>{
-    const p=gp(idx.code),chg=(p.cur-p.prev)/p.prev
+    const p=gp(idx.code)
+    if(!p.cur)return`<div class="idx"><div class="idx-name">${idx.name}</div><div class="idx-val" style="color:var(--muted)">--</div><div class="idx-chg">--</div></div>`
+    const chg=(p.cur-p.prev)/p.prev
     const cls=chg>0?'up':chg<0?'down':'',arr=chg>0?'▲':chg<0?'▼':'—'
     return`<div class="idx"><div class="idx-name">${idx.name}</div><div class="idx-val ${cls}">${fmtIdx(p.cur)}</div><div class="idx-chg ${cls}">${arr} ${fp(Math.abs(chg))}</div></div>`
   }).join('')
@@ -603,8 +634,10 @@ function renderIndices(){
 function renderSummary(){
   let tv=0,tc=0,td=0
   const rows=HOLDINGS.map(etf=>{
-    const p=gp(etf.code),val=etf.shares*p.cur,cost=etf.shares*etf.cost
-    tv+=val;tc+=cost;td+=etf.shares*(p.cur-p.prev)
+    const p=gp(etf.code)
+    const val=p.cur?etf.shares*p.cur:etf.shares*etf.cost  // 无数据时用成本代替
+    const cost=etf.shares*etf.cost
+    tv+=val;tc+=cost;if(p.cur&&p.prev)td+=etf.shares*(p.cur-p.prev)
     return{etf,val}
   })
   const pnl=tv-tc,pct=pnl/tc
@@ -638,9 +671,12 @@ function renderTodayEventsHint(){
 let _calcAct=HOLDINGS.map(()=>'买入')
 function renderHoldings(){
   document.getElementById('holdingCards').innerHTML=HOLDINGS.map((etf,i)=>{
-    const p=gp(etf.code),val=etf.shares*p.cur,cost=etf.shares*etf.cost
-    const pnl=val-cost,pct=pnl/cost,chg=(p.cur-p.prev)/p.prev
-    const s=sig(pct,etf,etf.shares,p.cur),cls=chg>0?'up':chg<0?'down':''
+    const p=gp(etf.code)
+    const cur=p.cur,prev=p.prev
+    const val=cur?etf.shares*cur:0,cost=etf.shares*etf.cost
+    const pnl=cur?val-cost:0,pct=cur?pnl/cost:0
+    const chg=cur&&prev?(cur-prev)/prev:0
+    const s=sig(pct,etf,etf.shares,cur),cls=chg>0?'up':chg<0?'down':''
     const hist=(HISTORY[etf.code]||[]).map(h=>h.price||h)
     if(hist.length<2)hist.push(etf.cost,p.cur)
     const dayChgTxt=chg>0?`▲ ${fp(Math.abs(chg))} 今天涨`:chg<0?`▼ ${fp(Math.abs(chg))} 今天跌`:'— 今天平'

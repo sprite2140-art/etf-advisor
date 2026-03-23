@@ -2,15 +2,9 @@ name: 抓取实时ETF价格
 
 on:
   schedule:
-    # 交易时间每5分钟（UTC，北京时间=UTC+8）
-    - cron: '25,30,35,40,45,50,55 1 * * 1-5'
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 2 * * 1-5'
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 3 * * 1-5'
-    - cron: '0,5,10,15,20,25,30 4 * * 1-5'
-    - cron: '55 4 * * 1-5'
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 5 * * 1-5'
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 6 * * 1-5'
-    - cron: '0,5 7 * * 1-5'
+    # 每5分钟触发一次（UTC 01:00–07:10 = CST 09:00–15:10）
+    # 用单条 cron 避免多条规则导致 GitHub 调度不稳定
+    - cron: '*/5 1-7 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -28,10 +22,25 @@ jobs:
           import urllib.request, json, re
           from datetime import datetime, timezone, timedelta
 
+          tz  = timezone(timedelta(hours=8))
+          now = datetime.now(tz)
+          now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+          # 交易时间检查（A股：09:25-11:35, 12:55-15:05，留余量）
+          hhmm = now.hour * 100 + now.minute
+          is_trading = (925 <= hhmm <= 1135) or (1255 <= hhmm <= 1505)
+          # workflow_dispatch 手动触发时强制执行
+          import os
+          is_manual = os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+
+          if not is_trading and not is_manual:
+              print(f'⏸ 非交易时间 {now_str}，跳过')
+              exit(0)
+
           # 持仓 + 观察列表 + 大盘指数，全部抓取
           HOLDING_CODES   = ['sz159869', 'sz161125', 'sz159583']
           WATCHLIST_CODES = ['sh510300', 'sh588000', 'sh513100']
-          INDEX_CODES     = ['sh000001', 'sz399001', 'sz399006']  # 上证/深成/创业板
+          INDEX_CODES     = ['sh000001', 'sz399001', 'sz399006']
           ALL_CODES = HOLDING_CODES + WATCHLIST_CODES + INDEX_CODES
 
           url = 'https://hq.sinajs.cn/list=' + ','.join(ALL_CODES)
@@ -53,16 +62,21 @@ jobs:
               if not m or not m.group(2): continue
               code, fields = m.group(1), m.group(2).split(',')
               if len(fields) < 6: continue
-              cur, prev = float(fields[3]), float(fields[2])
-              if not cur or not prev: continue
+              try:
+                  cur  = float(fields[3]) if fields[3] else 0.0
+                  prev = float(fields[2]) if fields[2] else 0.0
+              except ValueError:
+                  continue
+              if not prev: continue          # 没有昨收价，数据无效
+              if not cur:  cur = prev        # 闭市时 current=0，用昨收价代替
               prices[code] = {
-                  'name': fields[0], 'current': cur, 'prevClose': prev,
-                  'open': float(fields[1]), 'high': float(fields[4]), 'low': float(fields[5]),
+                  'name':      fields[0],
+                  'current':   cur,
+                  'prevClose': prev,
+                  'open':  float(fields[1]) if fields[1] else 0.0,
+                  'high':  float(fields[4]) if fields[4] else 0.0,
+                  'low':   float(fields[5]) if fields[5] else 0.0,
               }
-
-          tz  = timezone(timedelta(hours=8))
-          now = datetime.now(tz)
-          now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
           # 写入 prices.json
           with open('prices.json', 'w', encoding='utf-8') as f:
