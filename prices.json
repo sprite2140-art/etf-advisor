@@ -3,52 +3,76 @@
   "data": {
     "sz159869": {
       "name": "游戏ETF",
-      "current": 1.304,
-      "prevClose": 1.344,
-      "open": 1.342,
-      "high": 1.354,
-      "low": 1.303
+      "current": 1.262,
+      "prevClose": 1.304,
+      "open": 1.278,
+      "high": 1.283,
+      "low": 1.26
     },
     "sz161125": {
       "name": "标普500",
-      "current": 2.827,
-      "prevClose": 2.833,
-      "open": 2.83,
-      "high": 2.841,
-      "low": 2.824
+      "current": 2.74,
+      "prevClose": 2.827,
+      "open": 2.802,
+      "high": 2.806,
+      "low": 2.738
     },
     "sz159583": {
       "name": "通信设备",
-      "current": 1.369,
-      "prevClose": 1.357,
-      "open": 1.386,
-      "high": 1.414,
-      "low": 1.369
+      "current": 1.325,
+      "prevClose": 1.369,
+      "open": 1.327,
+      "high": 1.36,
+      "low": 1.317
     },
     "sh510300": {
       "name": "沪深300ETF华泰柏瑞",
-      "current": 4.576,
-      "prevClose": 4.599,
-      "open": 4.598,
-      "high": 4.635,
-      "low": 4.573
+      "current": 4.47,
+      "prevClose": 4.576,
+      "open": 4.528,
+      "high": 4.537,
+      "low": 4.468
     },
     "sh588000": {
-      "name": "科创50ETF",
-      "current": 1.388,
-      "prevClose": 1.411,
-      "open": 1.414,
-      "high": 1.419,
-      "low": 1.387
+      "name": "科创50ETF华夏",
+      "current": 1.349,
+      "prevClose": 1.388,
+      "open": 1.366,
+      "high": 1.375,
+      "low": 1.348
     },
     "sh513100": {
       "name": "纳指ETF国泰",
-      "current": 1.749,
-      "prevClose": 1.764,
-      "open": 1.771,
-      "high": 1.771,
-      "low": 1.748
+      "current": 1.694,
+      "prevClose": 1.749,
+      "open": 1.725,
+      "high": 1.725,
+      "low": 1.692
+    },
+    "sh000001": {
+      "name": "上证指数",
+      "current": 3858.1789,
+      "prevClose": 3957.0527,
+      "open": 3904.9513,
+      "high": 3906.622,
+      "low": 3858.1789
+    },
+    "sz399001": {
+      "name": "深证成指",
+      "current": 13515.127,
+      "prevClose": 13866.202,
+      "open": 13619.944,
+      "high": 13758.975,
+      "low": 13515.127
+    },
+    "sz399006": {
+      "name": "创业板指",
+      "current": 3270.158,
+      "prevClose": 3352.103,
+      "open": 3300.558,
+      "high": 3334.456,
+      "low": 3270.158
     }
   },
-  "updatedAt": "2026-03-20 16:12:36"
+  "updatedAt": "2026-03-23 11:37:25"
 }
